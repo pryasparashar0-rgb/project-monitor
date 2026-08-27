@@ -203,7 +203,7 @@
                 </div>
             </div>
         </div>
-        <div id="view-projectPage" class="view hidden">
+       <div id="view-projectPage" class="view hidden">
     <header>
         <div>
             <h1 id="ppName">Project Name</h1>
@@ -213,21 +213,6 @@
     </header>
 
     <section class="projects" style="margin-bottom:20px;">
-        <h2>Budget</h2>
-        <p id="ppBudget" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
-
-    <section class="projects" style="margin-bottom:20px;">
-        <h2>Work Involved</h2>
-        <p id="ppWork" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
-
-    <section class="projects" style="margin-bottom:20px;">
-        <h2>Idea / Notes</h2>
-        <p id="ppIdea" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
-
-    <section class="projects">
         <div class="section-title">
             <h2>Progress Photos</h2>
             <label class="small-btn upload-btn" style="display:inline-block; padding:8px 16px;">
@@ -235,7 +220,31 @@
                 <input type="file" id="ppPhotoInput" accept="image/*" style="display:none;" onchange="uploadProjectPhoto(event)">
             </label>
         </div>
-        <div id="ppPhotoGrid" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+        <div id="ppPhotoGrid" style="display:flex; flex-wrap:wrap; gap:12px; margin-top:15px;"></div>
+    </section>
+
+    <section class="projects" style="margin-bottom:20px;">
+        <div class="section-title">
+            <h2>Budget</h2>
+            <button class="small-btn" onclick="editProjectField('budget')">Edit</button>
+        </div>
+        <p id="ppBudget" style="margin-top:10px; color:#9ca3af;"></p>
+    </section>
+
+    <section class="projects" style="margin-bottom:20px;">
+        <div class="section-title">
+            <h2>Work Involved</h2>
+            <button class="small-btn" onclick="editProjectField('work')">Edit</button>
+        </div>
+        <p id="ppWork" style="margin-top:10px; color:#9ca3af;"></p>
+    </section>
+
+    <section class="projects">
+        <div class="section-title">
+            <h2>Idea / Notes</h2>
+            <button class="small-btn" onclick="editProjectField('idea')">Edit</button>
+        </div>
+        <p id="ppIdea" style="margin-top:10px; color:#9ca3af;"></p>
     </section>
 </div>
     </main>
