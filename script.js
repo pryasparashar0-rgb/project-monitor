@@ -128,22 +128,25 @@ function renderProjects() {
         const progress = p.progress || 0;
 
         projectList.innerHTML += `
-            <div class="project">
-                <div>
-                    <h3>${p.name}</h3>
-                    <p>${p.manager} • Due ${p.deadline}</p>
-                </div>
-                <div class="progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress}%;"></div>
-                    </div>
-                    <span>${progress}%</span>
-                </div>
-                <span class="status ${statusClass}">${statusLabel}</span>
-                <button class="task-edit" onclick="editProject(${index})">Edit</button>
-                <button class="task-delete" onclick="deleteProject(${index})">Delete</button>
+            
+               projectList.innerHTML += `
+    projectList.innerHTML += `
+    <div class="project" onclick="openProjectDetail(${index})">
+        <div>
+            <h3>${p.name}</h3>
+            <p>${p.manager} • Due ${p.deadline}</p>
+        </div>
+        <div class="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progress}%;"></div>
             </div>
-        `;
+            <span>${progress}%</span>
+        </div>
+        <span class="status ${statusClass}">${statusLabel}</span>
+        <button class="task-edit" onclick="editProject(${index}); event.stopPropagation();">Edit</button>
+        <button class="task-delete" onclick="deleteProject(${index}); event.stopPropagation();">Delete</button>
+    </div>
+`;
     });
 
     updateStats(projects);
@@ -184,7 +187,7 @@ function updateStats(projects) {
     animateCount("statAtRisk", atRisk);
 }
 
-// ---------- FULL PROJECTS PAGE (with filters) ----------
+// ---------- FULL PROJECTS PAGE (with filters + search) ----------
 
 let currentFilter = "all";
 
@@ -205,9 +208,19 @@ function renderFullProjects() {
     if (!container) return;
 
     const allProjects = getProjects();
-    const projects = currentFilter === "all"
+    const searchBox = document.getElementById("projectSearch");
+    const searchTerm = searchBox ? searchBox.value.toLowerCase() : "";
+
+    let projects = currentFilter === "all"
         ? allProjects
         : allProjects.filter(p => p.status === currentFilter);
+
+    if (searchTerm) {
+        projects = projects.filter(p =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.manager.toLowerCase().includes(searchTerm)
+        );
+    }
 
     container.innerHTML = "";
 
@@ -263,7 +276,9 @@ function switchView(viewName) {
         m.classList.remove("active");
     });
 
-    event.target.closest(".menu").classList.add("active");
+    if (typeof event !== "undefined" && event.target && event.target.closest(".menu")) {
+        event.target.closest(".menu").classList.add("active");
+    }
 
     if (viewName === "projects") {
         renderFullProjects();
@@ -355,6 +370,15 @@ function renderTasks() {
         tasks = allTasks.filter(t => !t.done);
     } else if (currentTaskFilter === "done") {
         tasks = allTasks.filter(t => t.done);
+    }
+
+    const searchBox = document.getElementById("taskSearch");
+    const searchTerm = searchBox ? searchBox.value.toLowerCase() : "";
+    if (searchTerm) {
+        tasks = tasks.filter(t =>
+            t.title.toLowerCase().includes(searchTerm) ||
+            (t.project && t.project.toLowerCase().includes(searchTerm))
+        );
     }
 
     taskList.innerHTML = "";
@@ -530,12 +554,6 @@ document.addEventListener("mousemove", function (e) {
     });
 });
 
-// ---------- PAGE LOAD ----------
-
-window.addEventListener("DOMContentLoaded", function () {
-    renderProjects();
-    renderTasks();
-});
 // ---------- TEAM MODAL ----------
 
 const teamData = {
@@ -592,8 +610,72 @@ function uploadTeamPhoto(event) {
     };
     reader.readAsDataURL(file);
 }
+// ---------- PROJECT DETAIL MODAL ----------
+
+let currentProjectIndex = null;
+
+function openProjectDetail(index) {
+    currentProjectIndex = index;
+    const projects = getProjects();
+    const p = projects[index];
+
+    document.getElementById("ppName").textContent = p.name;
+    document.getElementById("ppStatus").textContent = p.status;
+    document.getElementById("ppBudget").textContent = p.budget || "Not added yet";
+    document.getElementById("ppWork").textContent = p.work || "Not added yet";
+    document.getElementById("ppIdea").textContent = p.idea || "Not added yet";
+
+       renderProjectPhotos(p);
+    switchView('projectPage');
+}
+
+function uploadProjectPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const base64Image = e.target.result;
+
+        const projects = getProjects();
+        const p = projects[currentProjectIndex];
+
+        if (!p.photos) p.photos = [];
+        p.photos.push(base64Image);
+
+        localStorage.setItem("projects", JSON.stringify(projects));
+
+        renderProjectPhotos(p);
+    };
+    reader.readAsDataURL(file);
+}
+
+function renderProjectPhotos(p) {
+    const grid = document.getElementById("ppPhotoGrid");
+    grid.innerHTML = "";
+
+    const photos = p.photos || [];
+
+    if (photos.length === 0) {
+        grid.innerHTML = "<p style='color:#6b7280;'>No photos uploaded yet.</p>";
+        return;
+    }
+
+    photos.forEach(function (photoUrl) {
+        grid.innerHTML += `<img src="${photoUrl}" style="width:150px; height:150px; object-fit:cover; border-radius:10px; border:1px solid rgba(96,165,250,0.3);">`;
+    });
+}
+
+function closeProjectDetailModal() {
+    document.getElementById("projectDetailModal").classList.add("hidden");
+    currentProjectIndex = null;
+}
+// ---------- PAGE LOAD ----------
 
 window.addEventListener("DOMContentLoaded", function () {
+    renderProjects();
+    renderTasks();
+
     Object.keys(teamData).forEach(function (personId) {
         const savedPhoto = localStorage.getItem("teamPhoto_" + personId);
         if (savedPhoto) {
