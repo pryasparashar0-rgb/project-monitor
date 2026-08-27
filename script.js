@@ -1,4 +1,21 @@
-let editingProjectIndex = null;
+// =====================================================================
+// FIREBASE CONFIG — paste your own config object from the Firebase console
+// (Project Settings → General → Your apps → SDK setup and configuration)
+// =====================================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCA_WuWUYbdt3N9tlwX5lYzPzrw7vGo_NM",
+    authDomain: "project-monitor-sih.firebaseapp.com",
+    projectId: "project-monitor-sih",
+    storageBucket: "project-monitor-sih.firebasestorage.app",
+    messagingSenderId: "773667222615",
+    appId: "1:773667222615:web:bd21a99be8631bf79ddf12"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+let editingProjectId = null; // was editingProjectIndex — now stores a Firestore doc id
 
 // ---------- PROJECT MODAL ----------
 
@@ -11,7 +28,7 @@ function closeProjectForm() {
     document.getElementById("inputName").value = "";
     document.getElementById("inputManager").value = "";
     document.getElementById("inputDeadline").value = "";
-    editingProjectIndex = null;
+    editingProjectId = null;
 }
 
 function submitProject() {
@@ -34,29 +51,33 @@ function submitProject() {
 }
 
 function finishSubmitProject(projectName, manager, deadline, status, submitBtn) {
-    const projects = getProjects();
+    const data = {
+        name: projectName,
+        manager: manager,
+        deadline: deadline,
+        status: status
+    };
 
-    if (editingProjectIndex !== null) {
-        projects[editingProjectIndex].name = projectName;
-        projects[editingProjectIndex].manager = manager;
-        projects[editingProjectIndex].deadline = deadline;
-        projects[editingProjectIndex].status = status;
+    let promise;
+    if (editingProjectId !== null) {
+        // keep existing progress value, just update the edited fields
+        promise = db.collection("projects").doc(editingProjectId).update(data);
     } else {
-        projects.push({
-            name: projectName,
-            manager: manager,
-            deadline: deadline,
-            status: status,
-            progress: 0
-        });
+        data.progress = 0;
+        promise = db.collection("projects").add(data);
     }
 
-    localStorage.setItem("projects", JSON.stringify(projects));
-
-    renderProjects();
-    renderFullProjects();
-    closeProjectForm();
-    submitBtn.classList.remove("btn-loading");
+    promise
+        .then(function () {
+            closeProjectForm();
+            submitBtn.classList.remove("btn-loading");
+        })
+        .catch(function (err) {
+            alert("Error saving project: " + err.message);
+            submitBtn.classList.remove("btn-loading");
+        });
+    // renderProjects()/renderFullProjects() fire automatically via the
+    // onSnapshot listener in listenProjects() once the write lands
 }
 
 function editProject(index) {
@@ -68,17 +89,19 @@ function editProject(index) {
     document.getElementById("inputDeadline").value = p.deadline;
     document.getElementById("inputStatus").value = p.status;
 
-    editingProjectIndex = index;
+    editingProjectId = p.id;
 
     document.getElementById("projectModal").classList.remove("hidden");
 }
 
 function deleteProject(index) {
     const projects = getProjects();
-    projects.splice(index, 1);
-    localStorage.setItem("projects", JSON.stringify(projects));
-    renderProjects();
-    renderFullProjects();
+    const p = projects[index];
+    db.collection("projects").doc(p.id).delete()
+        .catch(function (err) {
+            alert("Error deleting project: " + err.message);
+        });
+    // list re-renders automatically via the onSnapshot listener
 }
 
 // ---------- PROJECT DATA ----------
@@ -91,19 +114,48 @@ function getDefaultProjects() {
     ];
 }
 
+// In-memory cache kept in sync with Firestore by listenProjects().
+// getProjects() stays synchronous so every existing render function
+// (renderProjects, renderFullProjects, renderReports, editProject...)
+// works completely unchanged.
+let projectsCache = [];
+
 function getProjects() {
-    let projects = JSON.parse(localStorage.getItem("projects"));
-    if (!projects) {
-        projects = getDefaultProjects();
-        localStorage.setItem("projects", JSON.stringify(projects));
-    }
-    return projects;
+    return projectsCache;
+}
+
+function listenProjects() {
+    db.collection("projects").get().then(function (snapshot) {
+        if (snapshot.empty) {
+            // seed with the same defaults the old localStorage version used,
+            // only the very first time the collection is empty
+            const defaults = getDefaultProjects();
+            const batch = db.batch();
+            defaults.forEach(function (p) {
+                const ref = db.collection("projects").doc();
+                batch.set(ref, p);
+            });
+            batch.commit();
+        }
+    });
+
+    db.collection("projects").onSnapshot(function (snapshot) {
+        projectsCache = snapshot.docs.map(function (doc) {
+            return Object.assign({ id: doc.id }, doc.data());
+        });
+        renderProjects();
+        renderFullProjects();
+        if (document.getElementById("view-reports") && !document.getElementById("view-reports").classList.contains("hidden")) {
+            renderReports();
+        }
+    });
 }
 
 // ---------- DASHBOARD PROJECT LIST ----------
 
 function renderProjects() {
     const projectList = document.getElementById("projectList");
+    if (!projectList) return;
     const projects = getProjects();
 
     projectList.innerHTML = "";
@@ -148,6 +200,7 @@ function renderProjects() {
 
 function animateCount(elementId, targetValue) {
     const el = document.getElementById(elementId);
+    if (!el) return;
     const startValue = parseInt(el.textContent) || 0;
 
     if (startValue === targetValue) return;
@@ -180,8 +233,6 @@ function updateStats(projects) {
     animateCount("statDelayed", delayed);
     animateCount("statAtRisk", atRisk);
 }
-
-window.addEventListener("DOMContentLoaded", renderProjects);
 
 // ---------- FULL PROJECTS PAGE (with filters) ----------
 
@@ -275,12 +326,22 @@ function switchView(viewName) {
 
 // ---------- TASKS ----------
 
+let tasksCache = [];
+
 function getTasks() {
-    return JSON.parse(localStorage.getItem("tasks")) || [];
+    return tasksCache;
 }
 
-function saveTasks(tasks) {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+function listenTasks() {
+    db.collection("tasks").onSnapshot(function (snapshot) {
+        tasksCache = snapshot.docs.map(function (doc) {
+            return Object.assign({ id: doc.id }, doc.data());
+        });
+        renderTasks();
+        if (document.getElementById("view-reports") && !document.getElementById("view-reports").classList.contains("hidden")) {
+            renderReports();
+        }
+    });
 }
 
 function showTaskForm() {
@@ -304,31 +365,35 @@ function submitTask() {
         return;
     }
 
-    const tasks = getTasks();
-    tasks.push({
+    db.collection("tasks").add({
         title: title,
         project: project,
         deadline: deadline,
         done: false
+    }).then(function () {
+        closeTaskForm();
+    }).catch(function (err) {
+        alert("Error saving task: " + err.message);
     });
-
-    saveTasks(tasks);
-    renderTasks();
-    closeTaskForm();
+    // list re-renders automatically via the onSnapshot listener
 }
 
 function toggleTask(index) {
     const tasks = getTasks();
-    tasks[index].done = !tasks[index].done;
-    saveTasks(tasks);
-    renderTasks();
+    const t = tasks[index];
+    db.collection("tasks").doc(t.id).update({ done: !t.done })
+        .catch(function (err) {
+            alert("Error updating task: " + err.message);
+        });
 }
 
 function deleteTask(index) {
     const tasks = getTasks();
-    tasks.splice(index, 1);
-    saveTasks(tasks);
-    renderTasks();
+    const t = tasks[index];
+    db.collection("tasks").doc(t.id).delete()
+        .catch(function (err) {
+            alert("Error deleting task: " + err.message);
+        });
 }
 
 let currentTaskFilter = "all";
@@ -347,6 +412,7 @@ function setTaskFilter(filter) {
 
 function renderTasks() {
     const taskList = document.getElementById("taskList");
+    if (!taskList) return;
     const allTasks = getTasks();
 
     let tasks = allTasks;
@@ -382,32 +448,38 @@ function renderTasks() {
     });
 }
 
-window.addEventListener("DOMContentLoaded", renderTasks);
-
 // ---------- LOGIN / LOGOUT ----------
+// NOTE: Firebase Auth requires an email format for its built-in
+// email/password provider. Keep your existing username/password fields
+// exactly as they are in login.html — just create your Firebase user(s)
+// with an email like "admin@projectmonitor.app" and type that same
+// string into the "username" field when logging in.
 
 function handleLogin() {
     const username = document.getElementById("loginUsername").value;
     const password = document.getElementById("loginPassword").value;
 
-    if (username === "admin" && password === "1234") {
-        localStorage.setItem("loggedIn", "true");
-        window.location.href = "index.html";
-    } else {
-        document.getElementById("loginError").classList.remove("hidden");
-    }
+    auth.signInWithEmailAndPassword(username, password)
+        .then(function () {
+            window.location.href = "index.html";
+        })
+        .catch(function () {
+            document.getElementById("loginError").classList.remove("hidden");
+        });
 }
 
 function checkLogin() {
-    const loggedIn = localStorage.getItem("loggedIn");
-    if (loggedIn !== "true") {
-        window.location.href = "login.html";
-    }
+    auth.onAuthStateChanged(function (user) {
+        if (!user) {
+            window.location.href = "login.html";
+        }
+    });
 }
 
 function logout() {
-    localStorage.removeItem("loggedIn");
-    window.location.href = "login.html";
+    auth.signOut().then(function () {
+        window.location.href = "login.html";
+    });
 }
 
 // ---------- REPORTS ----------
@@ -426,10 +498,13 @@ function renderReports() {
     const completed = tasks.filter(t => t.done).length;
     const pending = tasks.filter(t => !t.done).length;
 
+    const projectsCtx = document.getElementById("projectsChart");
+    const tasksCtx = document.getElementById("tasksChart");
+    if (!projectsCtx || !tasksCtx) return;
+
     if (projectsChartInstance) projectsChartInstance.destroy();
     if (tasksChartInstance) tasksChartInstance.destroy();
 
-    const projectsCtx = document.getElementById("projectsChart");
     projectsChartInstance = new Chart(projectsCtx, {
         type: "bar",
         data: {
@@ -447,7 +522,6 @@ function renderReports() {
         }
     });
 
-    const tasksCtx = document.getElementById("tasksChart");
     tasksChartInstance = new Chart(tasksCtx, {
         type: "doughnut",
         data: {
@@ -483,4 +557,13 @@ document.addEventListener("mousemove", function (e) {
         el.style.setProperty("--x", x + "px");
         el.style.setProperty("--y", y + "px");
     });
+});
+
+// ---------- STARTUP ----------
+// Replaces the old `window.addEventListener("DOMContentLoaded", renderProjects)`
+// and the matching one for renderTasks — the Firestore listeners call
+// render automatically every time data changes, including on first load.
+window.addEventListener("DOMContentLoaded", function () {
+    listenProjects();
+    listenTasks();
 });
