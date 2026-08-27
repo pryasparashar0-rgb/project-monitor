@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Monitoring System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+
+<div id="loadingScreen" class="loading-screen">
+    <div class="loading-content">
+        <h1>PROJECT MONITOR</h1>
+        <p>Initializing dashboard...</p>
+        <div class="loading-bar">
+            <div class="loading-bar-fill"></div>
+        </div>
+    </div>
+</div>
+
+    <div class="sidebar">
+        <h2>PROJECT<br>MONITOR</h2>
+
+<div class="menu active" onclick="switchView('dashboard')">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+    <span>Dashboard</span>
+</div>
+<div class="menu" onclick="switchView('projects')">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+    <span>Projects</span>
+</div>
+<div class="menu" onclick="switchView('tasks')">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 12 3 3 5-6"/></svg>
+    <span>Tasks</span>
+</div>
+<div class="menu" onclick="switchView('team')">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.5"/><path d="M16 14.2c2.8.5 5 2.6 5 5.3"/></svg>
+    <span>Team</span>
+</div>
+<div class="menu" onclick="switchView('reports')">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+    <span>Reports</span>
+</div>
+
+<div class="menu logout-menu" onclick="logout()">
+    <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    <span>Logout</span>
+</div>
+    </div>
+
+    <main>
+
+        <div id="view-dashboard" class="view">
+
+            <header>
+                <div>
+                    <h1>Project Dashboard</h1>
+                    <p>Monitor your projects, tasks and progress</p>
+                </div>
+                <button onclick="showProjectForm()">+ New Project</button>
+            </header>
+
+            <section class="cards">
+                <div class="card">
+                    <span>Total Projects</span>
+                    <strong id="statTotal">0</strong>
+                </div>
+
+                <div class="card">
+                    <span>On Track</span>
+                    <strong id="statOnTrack">0</strong>
+                </div>
+
+                <div class="card">
+                    <span>At Risk</span>
+                    <strong id="statAtRisk">0</strong>
+                </div>
+
+                <div class="card danger">
+                    <span>Delayed</span>
+                    <strong id="statDelayed">0</strong>
+                </div>
+            </section>
+
+            <section class="projects">
+                <div class="section-title">
+                    <h2>Active Projects</h2>
+                    <button class="small-btn">View All</button>
+                </div>
+
+                <div id="projectList"></div>
+            </section>
+
+        </div>
+
+        <div id="view-projects" class="view hidden">
+            <header>
+                <div>
+                    <h1>All Projects</h1>
+                    <p>Full list of every project</p>
+                </div>
+                <button onclick="showProjectForm()">+ New Project</button>
+            </header>
+
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                <button class="filter-btn" onclick="setFilter('on-track')">On Track</button>
+                <button class="filter-btn" onclick="setFilter('delayed')">Delayed</button>
+                <button class="filter-btn" onclick="setFilter('at-risk')">At Risk</button>
+            </div>
+
+            <section class="projects">
+                <div id="projectListFull"></div>
+            </section>
+        </div>
+
+        <div id="view-tasks" class="view hidden">
+            <header>
+                <div>
+                    <h1>Tasks</h1>
+                    <p>Track individual to-dos across your projects</p>
+                </div>
+                <button onclick="showTaskForm()">+ New Task</button>
+            </header>
+
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="setTaskFilter('all')">All</button>
+                <button class="filter-btn" onclick="setTaskFilter('pending')">Pending</button>
+                <button class="filter-btn" onclick="setTaskFilter('done')">Completed</button>
+            </div>
+
+            <section class="projects">
+                <div id="taskList"></div>
+            </section>
+        </div>
+
+        <div id="view-team" class="view hidden">
+            <header>
+                <div>
+                    <h1>Team</h1>
+                    <p>The people building this platform</p>
+                </div>
+            </header>
+
+            <div class="team-grid">
+                <div class="team-card">
+                    <div class="team-avatar">D</div>
+                    <h3>Devanshu</h3>
+                    <p class="team-role">AI / Risk Prediction</p>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-avatar">V</div>
+                    <h3>Varun</h3>
+                    <p class="team-role">Backend / Database</p>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-avatar">A</div>
+                    <h3>Ashwani</h3>
+                    <p class="team-role">Automation / APIs</p>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-avatar">I</div>
+                    <h3>Ishan</h3>
+                    <p class="team-role">Team Support</p>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-avatar">B</div>
+                    <h3>Bhavika</h3>
+                    <p class="team-role">UI/UX + Dashboard</p>
+                </div>
+
+                <div class="team-card">
+                    <div class="team-avatar">P</div>
+                    <h3>Pryas</h3>
+                    <p class="team-role">Team Lead + Frontend + Integration + Testing</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-reports" class="view hidden">
+            <header>
+                <div>
+                    <h1>Reports</h1>
+                    <p>Visual overview of your projects and tasks</p>
+                </div>
+            </header>
+
+            <div class="report-grid">
+                <div class="report-card">
+                    <h2>Projects by Status</h2>
+                    <canvas id="projectsChart"></canvas>
+                </div>
+
+                <div class="report-card">
+                    <h2>Tasks: Completed vs Pending</h2>
+                    <canvas id="tasksChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="projectModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>New Project</h2>
+            <input type="text" id="inputName" placeholder="Project Name">
+            <input type="text" id="inputManager" placeholder="Project Manager">
+            <input type="date" id="inputDeadline">
+            <select id="inputStatus">
+                <option value="on-track">On Track</option>
+                <option value="delayed">Delayed</option>
+                <option value="at-risk">At Risk</option>
+            </select>
+            <div class="modal-buttons">
+                <button onclick="submitProject()">Create Project</button>
+                <button onclick="closeProjectForm()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="taskModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>New Task</h2>
+            <input type="text" id="taskTitle" placeholder="Task Title">
+            <input type="text" id="taskProject" placeholder="Related Project">
+            <input type="date" id="taskDeadline">
+            <div class="modal-buttons">
+                <button onclick="submitTask()">Add Task</button>
+                <button onclick="closeTaskForm()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>checkLogin();</script>
+
+</body>
+</html>
