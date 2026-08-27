@@ -626,9 +626,44 @@ function openProjectDetail(index) {
     document.getElementById("ppIdea").textContent = p.idea || "Not added yet";
 
        renderProjectPhotos(p);
+       function editProjectField(field) {
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+
+    const labels = { budget: "Budget", work: "Work Involved", idea: "Idea / Notes" };
+    const currentValue = p[field] || "";
+
+    const newValue = prompt("Edit " + labels[field] + ":", currentValue);
+
+    if (newValue !== null) {
+        p[field] = newValue;
+        localStorage.setItem("projects", JSON.stringify(projects));
+
+        document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
+    }
+}
     switchView('projectPage');
 }
+function editProjectField(field) {
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
 
+    const labels = {
+        budget: "Enter Budget",
+        work: "Enter Work Involved",
+        idea: "Enter Idea / Notes"
+    };
+
+    const currentValue = p[field] || "";
+    const newValue = prompt(labels[field], currentValue);
+
+    if (newValue === null) return; // user clicked Cancel
+
+    p[field] = newValue;
+    localStorage.setItem("projects", JSON.stringify(projects));
+
+    document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
+}
 function uploadProjectPhoto(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -662,7 +697,7 @@ function renderProjectPhotos(p) {
     }
 
     photos.forEach(function (photoUrl) {
-        grid.innerHTML += `<img src="${photoUrl}" style="width:150px; height:150px; object-fit:cover; border-radius:10px; border:1px solid rgba(96,165,250,0.3);">`;
+        grid.innerHTML += `<img src="${photoUrl}">`;
     });
 }
 
