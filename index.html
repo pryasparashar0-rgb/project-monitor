@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -105,6 +103,8 @@
                 <button onclick="showProjectForm()">+ New Project</button>
             </header>
 
+            <input type="text" id="projectSearch" class="search-input" placeholder="Search projects..." oninput="renderFullProjects()">
+
             <div class="filter-bar">
                 <button class="filter-btn active" onclick="setFilter('all')">All</button>
                 <button class="filter-btn" onclick="setFilter('on-track')">On Track</button>
@@ -125,6 +125,8 @@
                 </div>
                 <button onclick="showTaskForm()">+ New Task</button>
             </header>
+
+            <input type="text" id="taskSearch" class="search-input" placeholder="Search tasks..." oninput="renderTasks()">
 
             <div class="filter-bar">
                 <button class="filter-btn active" onclick="setTaskFilter('all')">All</button>
@@ -203,50 +205,58 @@
                 </div>
             </div>
         </div>
-       <div id="view-projectPage" class="view hidden">
-    <header>
-        <div>
-            <h1 id="ppName">Project Name</h1>
-            <p id="ppStatus">Status</p>
-        </div>
-        <button onclick="switchView('projects')">← Back to Projects</button>
-    </header>
 
-    <section class="projects" style="margin-bottom:20px;">
-        <div class="section-title">
-            <h2>Progress Photos</h2>
-            <label class="small-btn upload-btn" style="display:inline-block; padding:8px 16px;">
-                + Upload Photo
-                <input type="file" id="ppPhotoInput" accept="image/*" style="display:none;" onchange="uploadProjectPhoto(event)">
-            </label>
-        </div>
-        <div id="ppPhotoGrid" style="display:flex; flex-wrap:wrap; gap:12px; margin-top:15px;"></div>
-    </section>
+        <div id="view-projectPage" class="view hidden">
+            <header>
+                <div>
+                    <h1 id="ppName">Project Name</h1>
+                    <p id="ppStatus">Status</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="showProjectQR()">📱 QR Code</button>
+                    <button onclick="switchView('projects')">← Back to Projects</button>
+                </div>
+            </header>
 
-    <section class="projects" style="margin-bottom:20px;">
-        <div class="section-title">
-            <h2>Budget</h2>
-            <button class="small-btn" onclick="editProjectField('budget')">Edit</button>
-        </div>
-        <p id="ppBudget" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
+            <section class="projects" style="margin-bottom:20px;">
+                <div class="section-title">
+                    <h2>Progress Photos</h2>
+                    <div style="display:flex; gap:10px;">
+                        <button class="small-btn" onclick="openHologram()">🔮 Hologram View</button>
+                        <label class="small-btn upload-btn" style="display:inline-block; padding:8px 16px;">
+                            + Upload Photo
+                            <input type="file" id="ppPhotoInput" accept="image/*" style="display:none;" onchange="uploadProjectPhoto(event)">
+                        </label>
+                    </div>
+                </div>
+                <div id="ppPhotoGrid"></div>
+            </section>
 
-    <section class="projects" style="margin-bottom:20px;">
-        <div class="section-title">
-            <h2>Work Involved</h2>
-            <button class="small-btn" onclick="editProjectField('work')">Edit</button>
-        </div>
-        <p id="ppWork" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
+            <section class="projects" style="margin-bottom:20px;">
+                <div class="section-title">
+                    <h2>Budget</h2>
+                    <button class="small-btn" onclick="editProjectField('budget')">Edit</button>
+                </div>
+                <p id="ppBudget" style="margin-top:10px; color:#9ca3af;"></p>
+            </section>
 
-    <section class="projects">
-        <div class="section-title">
-            <h2>Idea / Notes</h2>
-            <button class="small-btn" onclick="editProjectField('idea')">Edit</button>
+            <section class="projects" style="margin-bottom:20px;">
+                <div class="section-title">
+                    <h2>Work Involved</h2>
+                    <button class="small-btn" onclick="editProjectField('work')">Edit</button>
+                </div>
+                <p id="ppWork" style="margin-top:10px; color:#9ca3af;"></p>
+            </section>
+
+            <section class="projects">
+                <div class="section-title">
+                    <h2>Idea / Notes</h2>
+                    <button class="small-btn" onclick="editProjectField('idea')">Edit</button>
+                </div>
+                <p id="ppIdea" style="margin-top:10px; color:#9ca3af;"></p>
+            </section>
         </div>
-        <p id="ppIdea" style="margin-top:10px; color:#9ca3af;"></p>
-    </section>
-</div>
+
     </main>
 
     <div id="projectModal" class="modal hidden">
@@ -295,25 +305,44 @@
             <button onclick="closeTeamModal()">Close</button>
         </div>
     </div>
-<div id="projectDetailModal" class="modal hidden">
-    <div class="modal-content team-modal-content">
-        <h2 id="projDetailName"></h2>
-        <p id="projDetailStatus" class="team-role"></p>
 
-        <p class="team-work"><strong>Budget:</strong> <span id="projDetailBudget"></span></p>
-        <p class="team-work"><strong>Work Involved:</strong> <span id="projDetailWork"></span></p>
-        <p class="team-work"><strong>Idea:</strong> <span id="projDetailIdea"></span></p>
+    <div id="editFieldModal" class="modal hidden">
+        <div class="modal-content edit-field-modal">
+            <div class="edit-field-icon" id="editFieldIcon">💰</div>
+            <h2 id="editFieldTitle">Edit Budget</h2>
+            <p class="edit-field-subtitle">Update the details below</p>
 
-        <div id="projDetailPhotos" style="display:flex; flex-wrap:wrap; gap:8px; margin:10px 0;"></div>
+            <textarea id="editFieldTextarea" placeholder="Type here..." rows="6"></textarea>
 
-        <label class="upload-btn">
-            Upload Progress Photo
-            <input type="file" id="projPhotoInput" accept="image/*" style="display:none;" onchange="uploadProjectPhoto(event)">
-        </label>
-
-        <button onclick="closeProjectDetailModal()">Close</button>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeEditFieldModal()">Cancel</button>
+                <button onclick="saveEditField()">Save Changes</button>
+            </div>
+        </div>
     </div>
-</div>
+
+    <div id="hologramModal" class="modal hidden">
+        <div class="hologram-stage">
+            <button class="hologram-close" onclick="closeHologram()">✕</button>
+            <div class="hologram-frame">
+                <div class="hologram-scan"></div>
+                <img id="hologramImg" src="" alt="Hologram">
+                <div class="hologram-grid"></div>
+            </div>
+            <div class="hologram-base"></div>
+            <p class="hologram-label" id="hologramLabel">PROJECT SCAN</p>
+        </div>
+    </div>
+
+    <div id="qrModal" class="modal hidden">
+        <div class="modal-content" style="width:300px; text-align:center; align-items:center;">
+            <h2 id="qrProjectName" style="margin-bottom:5px;">Project QR</h2>
+            <p style="color:#6b7280; font-size:13px; margin-bottom:15px;">Scan to open this project</p>
+            <div id="qrCodeBox" style="background:white; padding:12px; border-radius:10px; display:inline-block;"></div>
+            <button onclick="closeProjectQR()" style="margin-top:20px; width:100%;">Close</button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
     <script>
         checkLogin();

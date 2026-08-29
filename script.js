@@ -58,6 +58,7 @@ function finishSubmitProject(projectName, manager, deadline, status, submitBtn) 
 
     renderProjects();
     renderFullProjects();
+    renderReports();
     closeProjectForm();
     submitBtn.classList.remove("btn-loading");
 }
@@ -82,6 +83,7 @@ function deleteProject(index) {
     localStorage.setItem("projects", JSON.stringify(projects));
     renderProjects();
     renderFullProjects();
+    renderReports();
 }
 
 // ---------- PROJECT DATA ----------
@@ -128,25 +130,22 @@ function renderProjects() {
         const progress = p.progress || 0;
 
         projectList.innerHTML += `
-            
-               projectList.innerHTML += `
-    projectList.innerHTML += `
-    <div class="project" onclick="openProjectDetail(${index})">
-        <div>
-            <h3>${p.name}</h3>
-            <p>${p.manager} • Due ${p.deadline}</p>
-        </div>
-        <div class="progress">
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${progress}%;"></div>
+            <div class="project" onclick="openProjectDetail(${index})">
+                <div>
+                    <h3>${p.name}</h3>
+                    <p>${p.manager} • Due ${p.deadline}</p>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress}%;"></div>
+                    </div>
+                    <span>${progress}%</span>
+                </div>
+                <span class="status ${statusClass}">${statusLabel}</span>
+                <button class="task-edit" onclick="editProject(${index}); event.stopPropagation();">Edit</button>
+                <button class="task-delete" onclick="deleteProject(${index}); event.stopPropagation();">Delete</button>
             </div>
-            <span>${progress}%</span>
-        </div>
-        <span class="status ${statusClass}">${statusLabel}</span>
-        <button class="task-edit" onclick="editProject(${index}); event.stopPropagation();">Edit</button>
-        <button class="task-delete" onclick="deleteProject(${index}); event.stopPropagation();">Delete</button>
-    </div>
-`;
+        `;
     });
 
     updateStats(projects);
@@ -242,7 +241,7 @@ function renderFullProjects() {
         const progress = p.progress || 0;
 
         container.innerHTML += `
-            <div class="project">
+            <div class="project" onclick="openProjectDetail(${realIndex})">
                 <div>
                     <h3>${p.name}</h3>
                     <p>${p.manager} • Due ${p.deadline}</p>
@@ -254,8 +253,8 @@ function renderFullProjects() {
                     <span>${progress}%</span>
                 </div>
                 <span class="status ${statusClass}">${statusLabel}</span>
-                <button class="task-edit" onclick="editProject(${realIndex})">Edit</button>
-                <button class="task-delete" onclick="deleteProject(${realIndex})">Delete</button>
+                <button class="task-edit" onclick="editProject(${realIndex}); event.stopPropagation();">Edit</button>
+                <button class="task-delete" onclick="deleteProject(${realIndex}); event.stopPropagation();">Delete</button>
             </div>
         `;
     });
@@ -330,6 +329,7 @@ function submitTask() {
 
     saveTasks(tasks);
     renderTasks();
+    renderReports();
     closeTaskForm();
 }
 
@@ -338,6 +338,7 @@ function toggleTask(index) {
     tasks[index].done = !tasks[index].done;
     saveTasks(tasks);
     renderTasks();
+    renderReports();
 }
 
 function deleteTask(index) {
@@ -345,6 +346,7 @@ function deleteTask(index) {
     tasks.splice(index, 1);
     saveTasks(tasks);
     renderTasks();
+    renderReports();
 }
 
 let currentTaskFilter = "all";
@@ -420,13 +422,16 @@ function renderReports() {
     const completed = tasks.filter(t => t.done).length;
     const pending = tasks.filter(t => !t.done).length;
 
+    const projectsCtx = document.getElementById("projectsChart");
+    const tasksCtx = document.getElementById("tasksChart");
+    if (!projectsCtx || !tasksCtx) return;
+
     if (projectsChartInstance) projectsChartInstance.destroy();
     if (tasksChartInstance) tasksChartInstance.destroy();
 
     Chart.defaults.color = "#9ca3af";
     Chart.defaults.font.family = "'Poppins', sans-serif";
 
-    const projectsCtx = document.getElementById("projectsChart");
     projectsChartInstance = new Chart(projectsCtx, {
         type: "bar",
         data: {
@@ -473,7 +478,6 @@ function renderReports() {
         }
     });
 
-    const tasksCtx = document.getElementById("tasksChart");
     tasksChartInstance = new Chart(tasksCtx, {
         type: "doughnut",
         data: {
@@ -522,7 +526,14 @@ function handleLogin() {
     const password = document.getElementById("loginPassword").value;
     const errorMsg = document.getElementById("loginError");
 
-    if (username === "admin" && password === "1234") {
+    const validUsers = [
+        { user: "admin", pass: "1234" },
+        { user: "pryasparashar0@gmail.com", pass: "pryas@123" }
+    ];
+
+    const match = validUsers.find(u => u.user === username && u.pass === password);
+
+    if (match) {
         localStorage.setItem("loggedIn", "true");
         window.location.href = "index.html";
     } else {
@@ -560,7 +571,7 @@ const teamData = {
     pryas: { name: "Pryas", role: "Team Lead + Frontend + Integration + Testing", work: "Leading the team, building the full frontend, and handling integration and testing." },
     varun: { name: "Varun", role: "Backend / Database", work: "Setting up the backend server and database to replace localStorage with real shared data." },
     ashwani: { name: "Ashwani", role: "Automation / APIs", work: "Building automation workflows and APIs to connect different parts of the platform." },
-    ishan: { name: "Ishan", role: "Team Support", work: "Supporting the team across tasks, coordination, and testing throughout the project." },
+    ishan: { name: "Ishan", role: "Frontend backup + mistake analysis", work: "Supporting the team across tasks, coordination, and testing throughout the project." },
     bhavika: { name: "Bhavika", role: "UI/UX + Dashboard", work: "Designing the UI/UX and dashboard layout for a clean, intuitive user experience." },
     devanshu: { name: "Devanshu", role: "AI / Risk Prediction", work: "Building the AI model that predicts project risk levels based on progress, deadlines and delays." }
 };
@@ -610,7 +621,8 @@ function uploadTeamPhoto(event) {
     };
     reader.readAsDataURL(file);
 }
-// ---------- PROJECT DETAIL MODAL ----------
+
+// ---------- PROJECT DETAIL PAGE ----------
 
 let currentProjectIndex = null;
 
@@ -625,45 +637,10 @@ function openProjectDetail(index) {
     document.getElementById("ppWork").textContent = p.work || "Not added yet";
     document.getElementById("ppIdea").textContent = p.idea || "Not added yet";
 
-       renderProjectPhotos(p);
-       function editProjectField(field) {
-    const projects = getProjects();
-    const p = projects[currentProjectIndex];
-
-    const labels = { budget: "Budget", work: "Work Involved", idea: "Idea / Notes" };
-    const currentValue = p[field] || "";
-
-    const newValue = prompt("Edit " + labels[field] + ":", currentValue);
-
-    if (newValue !== null) {
-        p[field] = newValue;
-        localStorage.setItem("projects", JSON.stringify(projects));
-
-        document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
-    }
-}
+    renderProjectPhotos(p);
     switchView('projectPage');
 }
-function editProjectField(field) {
-    const projects = getProjects();
-    const p = projects[currentProjectIndex];
 
-    const labels = {
-        budget: "Enter Budget",
-        work: "Enter Work Involved",
-        idea: "Enter Idea / Notes"
-    };
-
-    const currentValue = p[field] || "";
-    const newValue = prompt(labels[field], currentValue);
-
-    if (newValue === null) return; // user clicked Cancel
-
-    p[field] = newValue;
-    localStorage.setItem("projects", JSON.stringify(projects));
-
-    document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
-}
 function uploadProjectPhoto(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -701,15 +678,119 @@ function renderProjectPhotos(p) {
     });
 }
 
-function closeProjectDetailModal() {
-    document.getElementById("projectDetailModal").classList.add("hidden");
-    currentProjectIndex = null;
+// ---------- HOLOGRAM VIEW ----------
+
+function openHologram() {
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+    const photos = p.photos || [];
+
+    if (photos.length === 0) {
+        alert("Upload a photo first to view it in Hologram mode!");
+        return;
+    }
+
+    const latestPhoto = photos[photos.length - 1];
+    document.getElementById("hologramImg").src = latestPhoto;
+    document.getElementById("hologramLabel").textContent = p.name.toUpperCase() + " — LIVE SCAN";
+    document.getElementById("hologramModal").classList.remove("hidden");
 }
+
+function closeHologram() {
+    document.getElementById("hologramModal").classList.add("hidden");
+}
+
+// ---------- PROJECT QR CODE ----------
+
+let qrCodeInstance = null;
+
+function showProjectQR() {
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+
+    document.getElementById("qrProjectName").textContent = p.name;
+
+    const box = document.getElementById("qrCodeBox");
+    box.innerHTML = "";
+
+    const baseUrl = window.location.origin + window.location.pathname;
+    const qrUrl = baseUrl + "?project=" + currentProjectIndex;
+
+    qrCodeInstance = new QRCode(box, {
+        text: qrUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#0a0e17",
+        colorLight: "#ffffff"
+    });
+
+    document.getElementById("qrModal").classList.remove("hidden");
+}
+
+function closeProjectQR() {
+    document.getElementById("qrModal").classList.add("hidden");
+}
+
+function checkProjectFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    const projectParam = params.get("project");
+
+    if (projectParam !== null) {
+        const index = parseInt(projectParam);
+        const projects = getProjects();
+        if (projects[index]) {
+            openProjectDetail(index);
+        }
+    }
+}
+
+// ---------- EDIT FIELD MODAL (Budget / Work / Idea) ----------
+
+let currentEditField = null;
+
+const fieldIcons = { budget: "💰", work: "🛠️", idea: "💡" };
+const fieldLabels = { budget: "Budget", work: "Work Involved", idea: "Idea / Notes" };
+
+function editProjectField(field) {
+    currentEditField = field;
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+
+    document.getElementById("editFieldIcon").textContent = fieldIcons[field];
+    document.getElementById("editFieldTitle").textContent = "Edit " + fieldLabels[field];
+    document.getElementById("editFieldTextarea").value = p[field] || "";
+
+    document.getElementById("editFieldModal").classList.remove("hidden");
+    setTimeout(function () {
+        document.getElementById("editFieldTextarea").focus();
+    }, 100);
+}
+
+function closeEditFieldModal() {
+    document.getElementById("editFieldModal").classList.add("hidden");
+    currentEditField = null;
+}
+
+function saveEditField() {
+    const newValue = document.getElementById("editFieldTextarea").value;
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+
+    p[currentEditField] = newValue;
+    localStorage.setItem("projects", JSON.stringify(projects));
+
+    const field = currentEditField;
+    document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
+
+    closeEditFieldModal();
+}
+
 // ---------- PAGE LOAD ----------
 
 window.addEventListener("DOMContentLoaded", function () {
     renderProjects();
     renderTasks();
+    checkProjectFromURL();
 
     Object.keys(teamData).forEach(function (personId) {
         const savedPhoto = localStorage.getItem("teamPhoto_" + personId);

@@ -8,9 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="login-body">
-
     <div class="login-container">
         <h2>PROJECT<br>MONITOR</h2>
         <p class="login-subtitle">Sign in to continue</p>
@@ -19,7 +20,6 @@
         <button onclick="handleLogin()">Login</button>
         <p id="loginError" class="error hidden">Invalid username or password</p>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>

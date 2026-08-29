@@ -1038,3 +1038,391 @@ button:active {
     border: 1px solid #60a5fa;
     box-shadow: 0 0 12px rgba(96, 165, 250, 0.3);
 }
+#ppPhotoGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#ppPhotoGrid img {
+    width: 280px;
+    max-width: 100%;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    flex-shrink: 0;
+}
+/* EDIT FIELD MODAL - CRAZY VERSION */
+
+.edit-field-modal {
+    width: 400px;
+    text-align: center;
+    align-items: center;
+    padding: 32px;
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+    0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+    60% { opacity: 1; transform: scale(1.03) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.edit-field-icon {
+    font-size: 42px;
+    margin-bottom: 10px;
+    animation: iconFloat 2s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(5deg); }
+}
+
+.edit-field-modal h2 {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa, #60a5fa);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 3s linear infinite;
+    margin-bottom: 5px;
+}
+
+.edit-field-subtitle {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+#editFieldTextarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #e5e7eb;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 120px;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+#editFieldTextarea:focus {
+    outline: none;
+    border: 1px solid #60a5fa;
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.35);
+}
+
+.edit-field-modal .modal-buttons {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    background: rgba(255,255,255,0.06) !important;
+    color: #9ca3af !important;
+}
+
+.cancel-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+}
+#ppPhotoGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#ppPhotoGrid img {
+    width: 280px;
+    max-width: 100%;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    flex-shrink: 0;
+}
+
+/* EDIT FIELD MODAL - CRAZY VERSION */
+
+.edit-field-modal {
+    width: 400px;
+    text-align: center;
+    align-items: center;
+    padding: 32px;
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+    0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+    60% { opacity: 1; transform: scale(1.03) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.edit-field-icon {
+    font-size: 42px;
+    margin-bottom: 10px;
+    animation: iconFloat 2s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(5deg); }
+}
+
+.edit-field-modal h2 {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa, #60a5fa);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 3s linear infinite;
+    margin-bottom: 5px;
+}
+
+.edit-field-subtitle {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+#editFieldTextarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #e5e7eb;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 120px;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+#editFieldTextarea:focus {
+    outline: none;
+    border: 1px solid #60a5fa;
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.35);
+}
+
+.edit-field-modal .modal-buttons {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    background: rgba(255,255,255,0.06) !important;
+    color: #9ca3af !important;
+}
+
+.cancel-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+}
+#ppPhotoGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#ppPhotoGrid img {
+    width: 280px;
+    max-width: 100%;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    flex-shrink: 0;
+}
+
+/* EDIT FIELD MODAL */
+
+.edit-field-modal {
+    width: 400px;
+    text-align: center;
+    align-items: center;
+    padding: 32px;
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+    0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+    60% { opacity: 1; transform: scale(1.03) translateY(-5px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.edit-field-icon {
+    font-size: 42px;
+    margin-bottom: 10px;
+    animation: iconFloat 2s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(5deg); }
+}
+
+.edit-field-modal h2 {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa, #60a5fa);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 3s linear infinite;
+    margin-bottom: 5px;
+}
+
+.edit-field-subtitle {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+#editFieldTextarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #e5e7eb;
+    font-family: 'Poppins', Arial, sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 120px;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+#editFieldTextarea:focus {
+    outline: none;
+    border: 1px solid #60a5fa;
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.35);
+}
+
+.edit-field-modal .modal-buttons {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    background: rgba(255,255,255,0.06) !important;
+    color: #9ca3af !important;
+}
+
+.cancel-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+}
+
+/* HOLOGRAM VIEW */
+
+.hologram-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.hologram-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(96,165,250,0.3);
+    color: #e5e7eb;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 16px;
+}
+
+.hologram-frame {
+    position: relative;
+    width: 420px;
+    max-width: 85vw;
+    height: 420px;
+    max-height: 60vh;
+    border: 2px solid rgba(96, 165, 250, 0.6);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+        0 0 30px rgba(96, 165, 250, 0.5),
+        0 0 80px rgba(96, 165, 250, 0.25),
+        inset 0 0 40px rgba(96, 165, 250, 0.15);
+    animation: hologramFlicker 3s infinite;
+}
+
+.hologram-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(1.15) contrast(1.1) saturate(0.6) hue-rotate(180deg);
+    opacity: 0.9;
+    mix-blend-mode: screen;
+}
+
+.hologram-scan {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #60a5fa, transparent);
+    box-shadow: 0 0 15px 3px rgba(96, 165, 250, 0.9);
+    animation: hologramScan 2.5s linear infinite;
+    z-index: 3;
+}
+
+.hologram-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(rgba(96, 165, 250, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(96, 165, 250, 0.12) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+@keyframes hologramScan {
+    0% { top: 0%; }
+    100% { top: 100%; }
+}
+
+@keyframes hologramFlicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.7; }
+    94% { opacity: 1; }
+    96% { opacity: 0.85; }
+    97% { opacity: 1; }
+}
+
+.hologram-base {
+    width: 300px;
+    max-width: 70vw;
+    height: 14px;
+    margin-top: -7px;
+    background: radial-gradient(ellipse at center, rgba(96, 165, 250, 0.7), transparent 70%);
+    border-radius: 50%;
+    filter: blur(4px);
+    animation: hologramBasePulse 2s ease-in-out infinite;
+}
+
+@keyframes hologramBasePulse {
+    0%, 100% { opacity: 0.6; transform: scaleX(1); }
+    50% { opacity: 1; transform: scaleX(1.08); }
+}
+
+.hologram-label {
+    margin-top: 18px;
+    color: #60a5fa;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
+}
