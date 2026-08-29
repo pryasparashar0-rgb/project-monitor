@@ -4,6 +4,8 @@ let currentUser = localStorage.getItem("loggedInUser") || "guest";
 // ---------- CHART INSTANCES ----------
 let projectsChartInstance = null;
 let tasksChartInstance = null;
+let benchmarkChartInstance = null;
+let driverChartInstance = null;
 
 // ---------- PROJECT MODAL ----------
 let editingProjectIndex = null;
@@ -17,14 +19,19 @@ function closeProjectForm() {
     document.getElementById("inputName").value = "";
     document.getElementById("inputManager").value = "";
     document.getElementById("inputDeadline").value = "";
+    document.getElementById("inputStartDate").value = "";
+    document.getElementById("inputBudgetEst").value = "";
+    document.getElementById("inputBudgetSpent").value = "";
     editingProjectIndex = null;
 }
-
 function submitProject() {
     const projectName = document.getElementById("inputName").value;
     const manager = document.getElementById("inputManager").value;
     const deadline = document.getElementById("inputDeadline").value;
     const status = document.getElementById("inputStatus").value;
+    const startDate = document.getElementById("inputStartDate").value;
+    const budgetEst = document.getElementById("inputBudgetEst").value;
+    const budgetSpent = document.getElementById("inputBudgetSpent").value;
 
     if (!projectName.trim() || !manager.trim() || !deadline) {
         alert("Please fill all fields.");
@@ -35,41 +42,47 @@ function submitProject() {
     submitBtn.classList.add("btn-loading");
 
     setTimeout(function () {
-        finishSubmitProject(projectName, manager, deadline, status, submitBtn);
+        finishSubmitProject(projectName, manager, deadline, status, startDate, budgetEst, budgetSpent, submitBtn);
     }, 400);
 }
-
-function finishSubmitProject(projectName, manager, deadline, status, submitBtn) {
-    const projects = getProjects();
-
-    if (editingProjectIndex !== null) {
-        projects[editingProjectIndex].name = projectName;
-        projects[editingProjectIndex].manager = manager;
-        projects[editingProjectIndex].deadline = deadline;
-        projects[editingProjectIndex].status = status;
-    } else {
-        projects.push({
-            name: projectName,
-            manager: manager,
-            deadline: deadline,
-            status: status,
-            progress: 0
-        });
-    }
-
-    saveProjects(projects);
-
+function finishSubmitProject(projectName, manager, deadline, status, startDate, budgetEst, budgetSpent, submitBtn) {
     try {
+        const projects = getProjects();
+
+        if (editingProjectIndex !== null) {
+            projects[editingProjectIndex].name = projectName;
+            projects[editingProjectIndex].manager = manager;
+            projects[editingProjectIndex].deadline = deadline;
+            projects[editingProjectIndex].status = status;
+            projects[editingProjectIndex].startDate = startDate;
+            projects[editingProjectIndex].budgetEst = budgetEst;
+            projects[editingProjectIndex].budgetSpent = budgetSpent;
+        } else {
+            projects.push({
+                name: projectName,
+                manager: manager,
+                deadline: deadline,
+                status: status,
+                progress: 0,
+                startDate: startDate,
+                budgetEst: budgetEst,
+                budgetSpent: budgetSpent
+            });
+        }
+
+        saveProjects(projects);
+
         renderProjects();
         renderFullProjects();
         renderReports();
         renderNotifications();
     } catch (err) {
-        console.error("Render error:", err);
+        console.error("Error while saving project:", err);
+        alert("There was a problem saving the project. Open DevTools (F12) → Console to see the exact error: " + err.message);
+    } finally {
+        closeProjectForm();
+        submitBtn.classList.remove("btn-loading");
     }
-
-    closeProjectForm();
-    submitBtn.classList.remove("btn-loading");
 }
 
 function editProject(index) {
@@ -80,12 +93,14 @@ function editProject(index) {
     document.getElementById("inputManager").value = p.manager;
     document.getElementById("inputDeadline").value = p.deadline;
     document.getElementById("inputStatus").value = p.status;
+    document.getElementById("inputStartDate").value = p.startDate || "";
+    document.getElementById("inputBudgetEst").value = p.budgetEst || "";
+    document.getElementById("inputBudgetSpent").value = p.budgetSpent || "";
 
     editingProjectIndex = index;
 
     document.getElementById("projectModal").classList.remove("hidden");
 }
-
 function deleteProject(index) {
     const projects = getProjects();
     projects.splice(index, 1);
@@ -110,26 +125,35 @@ function projectsKey() {
     return "projects_" + currentUser;
 }
 
-function tasksKey() {
-    return "tasks_" + currentUser;
-}
+function getTasks() {
+    const key = tasksKey();
+    let tasks;
+    try {
+        tasks = JSON.parse(localStorage.getItem(key));
+    } catch (e) {
+        console.error("Corrupted task data — clearing it automatically:", e);
+        localStorage.removeItem(key);
+        tasks = null;
+    }
 
-function getProjects() {
-    const key = projectsKey();
-    let projects = JSON.parse(localStorage.getItem(key));
-
-    if (!projects) {
+    if (!tasks) {
         if (currentUser === "admin" || currentUser === "pryasparashar0@gmail.com") {
-            const legacy = JSON.parse(localStorage.getItem("projects"));
+            let legacy = null;
+            try {
+                legacy = JSON.parse(localStorage.getItem("tasks"));
+            } catch (e) {
+                console.error("Corrupted legacy task data — clearing it automatically:", e);
+                localStorage.removeItem("tasks");
+            }
             if (legacy) {
                 localStorage.setItem(key, JSON.stringify(legacy));
                 return legacy;
             }
         }
-        projects = getDefaultProjects();
-        localStorage.setItem(key, JSON.stringify(projects));
+        tasks = [];
+        localStorage.setItem(key, JSON.stringify(tasks));
     }
-    return projects;
+    return tasks;
 }
 
 function saveProjects(projects) {
@@ -243,12 +267,19 @@ function computeNotifications() {
             } else {
                 msg = "\"" + p.name + "\" has " + risk.daysRemaining + " day(s) left and is at high risk.";
             }
-            notifications.push({ index: index, level: risk.level, message: msg });
+                      notifications.push({ index: index, level: risk.level, message: msg });
+        }
+
+        const cost = computeCostOverrun(p);
+        if (cost.hasData && cost.level === "critical") {
+            notifications.push({ index: index, level: "critical", message: '"' + p.name + '" is predicted to exceed budget by ' + cost.overrunPercent + '%.' });
+        } else if (cost.hasData && cost.level === "high") {
+            notifications.push({ index: index, level: "high", message: '"' + p.name + '" is trending ' + cost.overrunPercent + '% over budget.' });
         }
     });
 
     return notifications;
-}
+} 
 
 function renderNotifications() {
     const notifications = computeNotifications();
@@ -479,20 +510,34 @@ function switchView(viewName) {
         renderFullProjects();
     }
 
-    if (viewName === "reports") {
+       if (viewName === "reports") {
         renderReports();
     }
-}
 
+    if (viewName === "insights") {
+        renderInsights();
+    }
+}
 // ---------- TASKS (PER-USER) ----------
 
 function getTasks() {
     const key = tasksKey();
-    let tasks = JSON.parse(localStorage.getItem(key));
+    let tasks;
+    try {
+        tasks = JSON.parse(localStorage.getItem(key));
+    } catch (e) {
+        console.error("Corrupted task data in localStorage — resetting:", e);
+        tasks = null;
+    }
 
     if (!tasks) {
         if (currentUser === "admin" || currentUser === "pryasparashar0@gmail.com") {
-            const legacy = JSON.parse(localStorage.getItem("tasks"));
+            let legacy = null;
+            try {
+                legacy = JSON.parse(localStorage.getItem("tasks"));
+            } catch (e) {
+                console.error("Corrupted legacy task data — ignoring:", e);
+            }
             if (legacy) {
                 localStorage.setItem(key, JSON.stringify(legacy));
                 return legacy;
@@ -635,6 +680,11 @@ function renderReports() {
     const projectsCtx = document.getElementById("projectsChart");
     const tasksCtx = document.getElementById("tasksChart");
     if (!projectsCtx || !tasksCtx) return;
+
+    if (typeof Chart === "undefined") {
+        console.error("Chart.js did not load (check your internet connection or Brave Shields blocking cdn.jsdelivr.net) — skipping chart rendering.");
+        return;
+    }
 
     if (projectsChartInstance) projectsChartInstance.destroy();
     if (tasksChartInstance) tasksChartInstance.destroy();
@@ -863,6 +913,7 @@ function openProjectDetail(index) {
     document.getElementById("ppIdea").textContent = p.idea || "Not added yet";
 
     renderAIRiskCard(p);
+    renderPredictiveCard(p);
     renderProjectPhotos(p);
     switchView('projectPage');
 }
@@ -1025,6 +1076,281 @@ function saveEditField() {
     document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
 
     closeEditFieldModal();
+}
+// ---------- COST OVERRUN PREDICTION ----------
+
+function computeCostOverrun(p) {
+    const estimated = parseFloat(p.budgetEst) || 0;
+    const spent = parseFloat(p.budgetSpent) || 0;
+    const progress = p.progress || 0;
+
+    if (estimated <= 0 || progress <= 0) return { hasData: false };
+
+    const predictedFinal = spent / (progress / 100);
+    const overrunAmount = predictedFinal - estimated;
+    const overrunPercent = Math.round((overrunAmount / estimated) * 1000) / 10;
+
+    let level;
+    if (overrunPercent > 25) level = "critical";
+    else if (overrunPercent > 10) level = "high";
+    else if (overrunPercent > 0) level = "medium";
+    else level = "low";
+
+    return {
+        hasData: true,
+        estimated: estimated,
+        spent: spent,
+        predictedFinal: Math.round(predictedFinal),
+        overrunPercent: overrunPercent,
+        level: level
+    };
+}
+
+// ---------- TIME OVERRUN PREDICTION ----------
+
+function computeTimeOverrun(p) {
+    if (!p.startDate) return { hasData: false };
+
+    const start = new Date(p.startDate);
+    const deadline = new Date(p.deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const totalPlannedDays = Math.max(1, Math.round((deadline - start) / msPerDay));
+    const elapsedDays = Math.round((today - start) / msPerDay);
+    const progress = p.progress || 0;
+
+    if (progress <= 0 || elapsedDays <= 0) return { hasData: false };
+
+    const velocity = progress / elapsedDays;
+    const totalDaysNeeded = Math.round(100 / velocity);
+    const predictedDate = new Date(start.getTime() + totalDaysNeeded * msPerDay);
+    const overrunDays = totalDaysNeeded - totalPlannedDays;
+
+    let level;
+    if (overrunDays > 14) level = "critical";
+    else if (overrunDays > 5) level = "high";
+    else if (overrunDays > 0) level = "medium";
+    else level = "low";
+
+    return {
+        hasData: true,
+        totalPlannedDays: totalPlannedDays,
+        predictedCompletionDate: predictedDate.toISOString().split("T")[0],
+        overrunDays: overrunDays,
+        level: level
+    };
+}
+
+function renderPredictiveCard(p) {
+    const container = document.getElementById("predictiveCard");
+    if (!container) return;
+
+    const cost = computeCostOverrun(p);
+    const time = computeTimeOverrun(p);
+
+    const costHTML = cost.hasData
+        ? '<div class="predictive-block"><span class="ai-badge ai-badge-' + cost.level + '">Cost: ' + (cost.overrunPercent > 0 ? "+" : "") + cost.overrunPercent + '%</span><p class="ai-risk-meta">Predicted final cost: ₹' + cost.predictedFinal.toLocaleString() + ' (estimated ₹' + cost.estimated.toLocaleString() + ')</p></div>'
+        : '<div class="predictive-block"><p class="ai-risk-meta">Add Estimated Budget and Actual Cost So Far to enable cost overrun prediction.</p></div>';
+
+    const timeHTML = time.hasData
+        ? '<div class="predictive-block"><span class="ai-badge ai-badge-' + time.level + '">Time: ' + (time.overrunDays > 0 ? "+" + time.overrunDays + "d" : "On schedule") + '</span><p class="ai-risk-meta">Predicted completion: ' + time.predictedCompletionDate + ' (planned ' + time.totalPlannedDays + '-day project)</p></div>'
+        : '<div class="predictive-block"><p class="ai-risk-meta">Add a Start Date to enable time overrun prediction.</p></div>';
+
+    container.innerHTML = costHTML + timeHTML;
+}
+
+// ---------- COST ESCALATION DRIVER ANALYSIS ----------
+
+function computeCostDrivers(p) {
+    const cost = computeCostOverrun(p);
+    const time = computeTimeOverrun(p);
+    const taskStats = getLinkedTaskStats(p.name);
+
+    const scheduleDriver = time.hasData ? Math.max(0, time.overrunDays) : 0;
+    const pendingRatio = taskStats.total > 0 ? taskStats.pending / taskStats.total : 0;
+    const resourceDriver = pendingRatio * 100;
+    const spendRateDriver = cost.hasData ? Math.max(0, cost.overrunPercent) : 0;
+
+    const total = scheduleDriver + resourceDriver + spendRateDriver || 1;
+
+    return {
+        schedule: Math.round((scheduleDriver / total) * 100),
+        resource: Math.round((resourceDriver / total) * 100),
+        spendRate: Math.round((spendRateDriver / total) * 100)
+    };
+}
+
+// ---------- INSIGHTS / BENCHMARKING DASHBOARD ----------
+
+function renderInsights() {
+    const projects = getProjects();
+    if (projects.length === 0) return;
+
+    let totalScore = 0;
+    let costOverrunCount = 0;
+    let timeOverrunCount = 0;
+    let criticalCount = 0;
+    const labels = [];
+    const progressData = [];
+    const spentPercentData = [];
+
+    let worstProject = null;
+    let worstScore = -1;
+
+    projects.forEach(function (p) {
+        const risk = computeAIRisk(p);
+        totalScore += risk.score;
+        if (risk.level === "critical") criticalCount++;
+
+        const cost = computeCostOverrun(p);
+        if (cost.hasData && cost.overrunPercent > 0) costOverrunCount++;
+
+        const time = computeTimeOverrun(p);
+        if (time.hasData && time.overrunDays > 0) timeOverrunCount++;
+
+        labels.push(p.name.length > 15 ? p.name.slice(0, 15) + "…" : p.name);
+        progressData.push(p.progress || 0);
+        const estimated = parseFloat(p.budgetEst) || 0;
+        const spent = parseFloat(p.budgetSpent) || 0;
+        spentPercentData.push(estimated > 0 ? Math.round((spent / estimated) * 100) : 0);
+
+        let combinedScore = risk.score;
+        if (cost.hasData) combinedScore = (risk.score + Math.min(100, Math.max(0, cost.overrunPercent * 2))) / 2;
+        if (combinedScore > worstScore) { worstScore = combinedScore; worstProject = p; }
+    });
+
+    animateCount("portfolioRiskScore", Math.round(totalScore / projects.length));
+    animateCount("costOverrunCount", costOverrunCount);
+    animateCount("timeOverrunCount", timeOverrunCount);
+    animateCount("criticalAlertCount", criticalCount);
+
+    const benchCtx = document.getElementById("benchmarkChart");
+    if (benchCtx) {
+        if (benchmarkChartInstance) benchmarkChartInstance.destroy();
+        benchmarkChartInstance = new Chart(benchCtx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: "Progress %", data: progressData, backgroundColor: "rgba(96,165,250,0.7)", borderRadius: 6 },
+                    { label: "Budget Spent %", data: spentPercentData, backgroundColor: "rgba(248,113,113,0.7)", borderRadius: 6 }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: "#9ca3af" } } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: "#9ca3af" }, grid: { color: "rgba(255,255,255,0.06)" } },
+                    x: { ticks: { color: "#9ca3af" }, grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    const driverCtx = document.getElementById("driverChart");
+    if (driverCtx && worstProject) {
+        const drivers = computeCostDrivers(worstProject);
+        if (driverChartInstance) driverChartInstance.destroy();
+        driverChartInstance = new Chart(driverCtx, {
+            type: "doughnut",
+            data: {
+                labels: ["Schedule Slip", "Resource / Task Backlog", "Spend Rate"],
+                datasets: [{
+                    data: [drivers.schedule, drivers.resource, drivers.spendRate],
+                    backgroundColor: ["rgba(248,113,113,0.8)", "rgba(251,191,36,0.8)", "rgba(124,58,237,0.8)"],
+                    borderColor: ["#f87171", "#fbbf24", "#7c3aed"],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom", labels: { color: "#9ca3af" } } } }
+        });
+    }
+
+    const alertList = document.getElementById("insightsAlertList");
+    if (alertList) {
+        const notifications = computeNotifications();
+        alertList.innerHTML = notifications.length === 0
+            ? "<p style='padding:20px;color:#6b7280;'>No predictive alerts right now.</p>"
+            : notifications.map(function (n) {
+                return '<div class="notif-item notif-item-' + n.level + '" onclick="openProjectDetail(' + n.index + ')"><span class="notif-dot notif-dot-' + n.level + '"></span><span>' + n.message + '</span></div>';
+            }).join("");
+    }
+}
+
+// ---------- LLM-ENABLED PROJECT INTELLIGENCE ASSISTANT ----------
+
+function toggleAssistant() {
+    const panel = document.getElementById("assistantPanel");
+    if (!panel) return;
+    panel.classList.toggle("show");
+    if (panel.classList.contains("show") && document.getElementById("assistantMessages").children.length === 0) {
+        appendAssistantMessage("Hi! I'm your Project Intelligence Assistant. Ask me things like: 'What's the risk on Campus Infrastructure?' or 'Which projects are over budget?'", "bot");
+    }
+}
+
+function appendAssistantMessage(text, sender) {
+    const msgs = document.getElementById("assistantMessages");
+    const div = document.createElement("div");
+    div.className = "assistant-msg assistant-msg-" + sender;
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+function sendAssistantMessage() {
+    const input = document.getElementById("assistantInput");
+    const question = input.value.trim();
+    if (!question) return;
+
+    appendAssistantMessage(question, "user");
+    input.value = "";
+
+    setTimeout(function () {
+        appendAssistantMessage(answerAssistantQuestion(question), "bot");
+    }, 300);
+}
+
+function answerAssistantQuestion(question) {
+    const q = question.toLowerCase();
+    const projects = getProjects();
+
+    const matchedProject = projects.find(function (p) { return q.includes(p.name.toLowerCase()); });
+
+    if (matchedProject) {
+        const risk = computeAIRisk(matchedProject);
+        const cost = computeCostOverrun(matchedProject);
+        let ans = '"' + matchedProject.name + '" is at ' + (matchedProject.progress || 0) + '% progress, status: ' + risk.label + '. ' + risk.reason;
+        if (cost.hasData) {
+            ans += cost.overrunPercent > 0 ? ' Cost prediction: trending ' + cost.overrunPercent + '% over budget.' : ' Cost prediction: within budget.';
+        }
+        return ans;
+    }
+
+    if (q.includes("over budget") || q.includes("cost overrun") || q.includes("budget")) {
+        const overBudget = projects.filter(function (p) { const c = computeCostOverrun(p); return c.hasData && c.overrunPercent > 0; });
+        if (overBudget.length === 0) return "No projects currently have enough budget data, or none are over budget.";
+        return "Projects trending over budget: " + overBudget.map(function (p) { return p.name + " (+" + computeCostOverrun(p).overrunPercent + "%)"; }).join(", ");
+    }
+
+    if (q.includes("risk") || q.includes("critical")) {
+        const risky = projects.filter(function (p) { const r = computeAIRisk(p); return r.level === "critical" || r.level === "high"; });
+        if (risky.length === 0) return "No projects are currently at high or critical risk.";
+        return "Highest risk projects: " + risky.map(function (p) { return p.name + " (" + computeAIRisk(p).label + ")"; }).join(", ");
+    }
+
+    if (q.includes("delay") || q.includes("late") || q.includes("overdue")) {
+        const overdue = projects.filter(function (p) { return computeAIRisk(p).daysRemaining < 0; });
+        if (overdue.length === 0) return "No projects are currently overdue.";
+        return "Overdue projects: " + overdue.map(function (p) { return p.name; }).join(", ");
+    }
+
+    if (q.includes("how many") && q.includes("project")) {
+        return "There are currently " + projects.length + " project(s) being tracked.";
+    }
+
+    return "I can answer questions about a specific project by name, or ask 'which projects are over budget', 'what's at risk', or 'any delays'. This rule-based assistant can be upgraded to a real LLM API (e.g. free-tier Groq or OpenAI) for open-ended understanding.";
 }
 
 // ---------- PAGE LOAD ----------

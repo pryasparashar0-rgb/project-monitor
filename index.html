@@ -34,6 +34,21 @@
         <div id="notifList"></div>
     </div>
 
+    <div id="assistantBtn" class="assistant-btn" onclick="toggleAssistant()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div id="assistantPanel" class="assistant-panel">
+        <div class="assistant-header">
+            <span>Project Intelligence Assistant</span>
+            <button class="assistant-close" onclick="toggleAssistant()">✕</button>
+        </div>
+        <div id="assistantMessages" class="assistant-messages"></div>
+        <div class="assistant-input-row">
+            <input type="text" id="assistantInput" placeholder="Ask about a project, risk, or budget..." onkeypress="if(event.key==='Enter') sendAssistantMessage()">
+            <button onclick="sendAssistantMessage()">Send</button>
+        </div>
+    </div>
+
     <div class="sidebar">
         <h2>PROJECT<br>MONITOR</h2>
 
@@ -56,6 +71,10 @@
         <div class="menu" onclick="switchView('reports')">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
             <span>Reports</span>
+        </div>
+        <div class="menu" onclick="switchView('insights')">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <span>Insights</span>
         </div>
 
         <div class="current-user" id="currentUserLabel"></div>
@@ -180,7 +199,7 @@
                 <div class="team-card" onclick="openTeamModal('ishan')">
                     <div class="team-avatar" id="avatar-ishan">I</div>
                     <h3>Ishan</h3>
-                    <p class="team-role">Frontend backup+ mistake analysis</p>
+                    <p class="team-role">Frontend backup + mistake analysis</p>
                 </div>
 
                 <div class="team-card" onclick="openTeamModal('bhavika')">
@@ -217,6 +236,50 @@
             </div>
         </div>
 
+        <div id="view-insights" class="view hidden">
+            <header>
+                <div>
+                    <h1>Insights</h1>
+                    <p>Portfolio-wide predictive analytics and benchmarking</p>
+                </div>
+            </header>
+
+            <section class="cards">
+                <div class="card">
+                    <span>Portfolio Risk Score</span>
+                    <strong id="portfolioRiskScore">0</strong>
+                </div>
+                <div class="card">
+                    <span>Cost Overrun Projects</span>
+                    <strong id="costOverrunCount">0</strong>
+                </div>
+                <div class="card">
+                    <span>Time Overrun Projects</span>
+                    <strong id="timeOverrunCount">0</strong>
+                </div>
+                <div class="card danger">
+                    <span>Critical Alerts</span>
+                    <strong id="criticalAlertCount">0</strong>
+                </div>
+            </section>
+
+            <div class="report-grid" style="margin-top:20px;">
+                <div class="report-card">
+                    <h2>Benchmarking: Progress vs Budget Spent</h2>
+                    <canvas id="benchmarkChart"></canvas>
+                </div>
+                <div class="report-card">
+                    <h2>Cost Escalation Drivers (Highest-Risk Project)</h2>
+                    <canvas id="driverChart"></canvas>
+                </div>
+            </div>
+
+            <section class="projects" style="margin-top:20px;">
+                <div class="section-title"><h2>Predictive Alerts</h2></div>
+                <div id="insightsAlertList"></div>
+            </section>
+        </div>
+
         <div id="view-projectPage" class="view hidden">
             <header>
                 <div>
@@ -235,6 +298,14 @@
                     <span class="ai-tag">AI GENERATED</span>
                 </div>
                 <div id="aiRiskCard"></div>
+            </section>
+
+            <section class="projects ai-risk-section" style="margin-bottom:20px;">
+                <div class="section-title">
+                    <h2>Predictive Analysis</h2>
+                    <span class="ai-tag">COST + TIME MODEL</span>
+                </div>
+                <div id="predictiveCard"></div>
             </section>
 
             <section class="projects" style="margin-bottom:20px;">
@@ -284,6 +355,9 @@
             <input type="text" id="inputName" placeholder="Project Name">
             <input type="text" id="inputManager" placeholder="Project Manager">
             <input type="date" id="inputDeadline">
+            <input type="date" id="inputStartDate">
+            <input type="number" id="inputBudgetEst" placeholder="Estimated Budget (₹)">
+            <input type="number" id="inputBudgetSpent" placeholder="Actual Cost So Far (₹)">
             <select id="inputStatus">
                 <option value="on-track">On Track</option>
                 <option value="delayed">Delayed</option>
