@@ -11,6 +11,8 @@ let driverChartInstance = null;
 let editingProjectIndex = null;
 
 function showProjectForm() {
+    document.getElementById("projectModalTitle").textContent = "New Project";
+    document.getElementById("projectSubmitBtn").textContent = "Create Project";
     document.getElementById("projectModal").classList.remove("hidden");
 }
 
@@ -22,6 +24,8 @@ function closeProjectForm() {
     document.getElementById("inputStartDate").value = "";
     document.getElementById("inputBudgetEst").value = "";
     document.getElementById("inputBudgetSpent").value = "";
+    document.getElementById("projectModalTitle").textContent = "New Project";
+    document.getElementById("projectSubmitBtn").textContent = "Create Project";
     editingProjectIndex = null;
 }
 function submitProject() {
@@ -76,6 +80,15 @@ function finishSubmitProject(projectName, manager, deadline, status, startDate, 
         renderFullProjects();
         renderReports();
         renderNotifications();
+
+        // If the project just edited is the one currently open in the detail
+        // page, refresh its AI Risk / Predictive cards immediately instead of
+        // making the user leave and come back to see the new numbers.
+        if (editingProjectIndex !== null && editingProjectIndex === currentProjectIndex) {
+            const updated = getProjects()[currentProjectIndex];
+            renderAIRiskCard(updated);
+            renderPredictiveCard(updated);
+        }
     } catch (err) {
         console.error("Error while saving project:", err);
         alert("There was a problem saving the project. Open DevTools (F12) → Console to see the exact error: " + err.message);
@@ -98,6 +111,9 @@ function editProject(index) {
     document.getElementById("inputBudgetSpent").value = p.budgetSpent || "";
 
     editingProjectIndex = index;
+
+    document.getElementById("projectModalTitle").textContent = "Edit Project";
+    document.getElementById("projectSubmitBtn").textContent = "Save Changes";
 
     document.getElementById("projectModal").classList.remove("hidden");
 }
@@ -125,35 +141,35 @@ function projectsKey() {
     return "projects_" + currentUser;
 }
 
-function getTasks() {
-    const key = tasksKey();
-    let tasks;
+function getProjects() {
+    const key = projectsKey();
+    let projects;
     try {
-        tasks = JSON.parse(localStorage.getItem(key));
+        projects = JSON.parse(localStorage.getItem(key));
     } catch (e) {
-        console.error("Corrupted task data — clearing it automatically:", e);
+        console.error("Corrupted project data — clearing it automatically:", e);
         localStorage.removeItem(key);
-        tasks = null;
+        projects = null;
     }
 
-    if (!tasks) {
+    if (!projects) {
         if (currentUser === "admin" || currentUser === "pryasparashar0@gmail.com") {
             let legacy = null;
             try {
-                legacy = JSON.parse(localStorage.getItem("tasks"));
+                legacy = JSON.parse(localStorage.getItem("projects"));
             } catch (e) {
-                console.error("Corrupted legacy task data — clearing it automatically:", e);
-                localStorage.removeItem("tasks");
+                console.error("Corrupted legacy project data — clearing it automatically:", e);
+                localStorage.removeItem("projects");
             }
             if (legacy) {
                 localStorage.setItem(key, JSON.stringify(legacy));
                 return legacy;
             }
         }
-        tasks = [];
-        localStorage.setItem(key, JSON.stringify(tasks));
+        projects = getDefaultProjects();
+        localStorage.setItem(key, JSON.stringify(projects));
     }
-    return tasks;
+    return projects;
 }
 
 function saveProjects(projects) {
@@ -267,7 +283,7 @@ function computeNotifications() {
             } else {
                 msg = "\"" + p.name + "\" has " + risk.daysRemaining + " day(s) left and is at high risk.";
             }
-                      notifications.push({ index: index, level: risk.level, message: msg });
+            notifications.push({ index: index, level: risk.level, message: msg });
         }
 
         const cost = computeCostOverrun(p);
@@ -279,7 +295,7 @@ function computeNotifications() {
     });
 
     return notifications;
-} 
+}
 
 function renderNotifications() {
     const notifications = computeNotifications();
@@ -510,7 +526,7 @@ function switchView(viewName) {
         renderFullProjects();
     }
 
-       if (viewName === "reports") {
+    if (viewName === "reports") {
         renderReports();
     }
 
@@ -518,7 +534,12 @@ function switchView(viewName) {
         renderInsights();
     }
 }
+
 // ---------- TASKS (PER-USER) ----------
+
+function tasksKey() {
+    return "tasks_" + currentUser;
+}
 
 function getTasks() {
     const key = tasksKey();
@@ -527,6 +548,7 @@ function getTasks() {
         tasks = JSON.parse(localStorage.getItem(key));
     } catch (e) {
         console.error("Corrupted task data in localStorage — resetting:", e);
+        localStorage.removeItem(key);
         tasks = null;
     }
 
@@ -537,6 +559,7 @@ function getTasks() {
                 legacy = JSON.parse(localStorage.getItem("tasks"));
             } catch (e) {
                 console.error("Corrupted legacy task data — ignoring:", e);
+                localStorage.removeItem("tasks");
             }
             if (legacy) {
                 localStorage.setItem(key, JSON.stringify(legacy));
@@ -1077,6 +1100,7 @@ function saveEditField() {
 
     closeEditFieldModal();
 }
+
 // ---------- COST OVERRUN PREDICTION ----------
 
 function computeCostOverrun(p) {
@@ -1152,11 +1176,11 @@ function renderPredictiveCard(p) {
 
     const costHTML = cost.hasData
         ? '<div class="predictive-block"><span class="ai-badge ai-badge-' + cost.level + '">Cost: ' + (cost.overrunPercent > 0 ? "+" : "") + cost.overrunPercent + '%</span><p class="ai-risk-meta">Predicted final cost: ₹' + cost.predictedFinal.toLocaleString() + ' (estimated ₹' + cost.estimated.toLocaleString() + ')</p></div>'
-        : '<div class="predictive-block"><p class="ai-risk-meta">Add Estimated Budget and Actual Cost So Far to enable cost overrun prediction.</p></div>';
+        : '<div class="predictive-block"><p class="ai-risk-meta">Add Estimated Budget and Actual Cost So Far to enable cost overrun prediction. <button class="small-btn" style="margin-left:8px;" onclick="editProject(currentProjectIndex)">Add now</button></p></div>';
 
     const timeHTML = time.hasData
         ? '<div class="predictive-block"><span class="ai-badge ai-badge-' + time.level + '">Time: ' + (time.overrunDays > 0 ? "+" + time.overrunDays + "d" : "On schedule") + '</span><p class="ai-risk-meta">Predicted completion: ' + time.predictedCompletionDate + ' (planned ' + time.totalPlannedDays + '-day project)</p></div>'
-        : '<div class="predictive-block"><p class="ai-risk-meta">Add a Start Date to enable time overrun prediction.</p></div>';
+        : '<div class="predictive-block"><p class="ai-risk-meta">Add a Start Date to enable time overrun prediction. <button class="small-btn" style="margin-left:8px;" onclick="editProject(currentProjectIndex)">Add now</button></p></div>';
 
     container.innerHTML = costHTML + timeHTML;
 }

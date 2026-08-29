@@ -351,7 +351,7 @@
 
     <div id="projectModal" class="modal hidden">
         <div class="modal-content">
-            <h2>New Project</h2>
+            <h2 id="projectModalTitle">New Project</h2>
             <input type="text" id="inputName" placeholder="Project Name">
             <input type="text" id="inputManager" placeholder="Project Manager">
             <input type="date" id="inputDeadline">
@@ -364,7 +364,7 @@
                 <option value="at-risk">At Risk</option>
             </select>
             <div class="modal-buttons">
-                <button onclick="submitProject()">Create Project</button>
+                <button id="projectSubmitBtn" onclick="submitProject()">Create Project</button>
                 <button onclick="closeProjectForm()">Cancel</button>
             </div>
         </div>
