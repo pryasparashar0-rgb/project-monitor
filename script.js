@@ -1,47 +1,3 @@
-// ---------- JSONBIN DATABASE ----------
-
-const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a92dba9da38895dfe200038";
-const JSONBIN_KEY = "$2a$10$4DrhIPag0vnTKjFeEzdEoOSsXoQzENjoxkb7yh8eGkMFb.DYaiH5K";
-
-fetch(JSONBIN_URL + "/latest", {
-    headers: { "X-Master-Key": JSONBIN_KEY }
-})
-.then(res => res.json())
-.then(data => {
-    const db = data.record || {};
-
-    Object.keys(db).forEach(key => {
-        localStorage.setItem(key, db[key]);
-    });
-
-    if (typeof renderProjects === "function") renderProjects();
-    if (typeof renderTasks === "function") renderTasks();
-    if (typeof renderNotifications === "function") renderNotifications();
-})
-.catch(err => console.log("Database load error:", err));
-
-const originalSetItem = localStorage.setItem.bind(localStorage);
-
-localStorage.setItem = function(key, value) {
-    originalSetItem(key, value);
-
-    const data = {};
-
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        data[k] = localStorage.getItem(k);
-    }
-
-    fetch(JSONBIN_URL, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "X-Master-Key": JSONBIN_KEY
-        },
-        body: JSON.stringify(data)
-    });
-};
-
 // ---------- CURRENT USER ----------
 let currentUser = localStorage.getItem("loggedInUser") || "guest";
 
@@ -103,10 +59,15 @@ function finishSubmitProject(projectName, manager, deadline, status, submitBtn) 
 
     saveProjects(projects);
 
-    renderProjects();
-    renderFullProjects();
-    renderReports();
-    renderNotifications();
+    try {
+        renderProjects();
+        renderFullProjects();
+        renderReports();
+        renderNotifications();
+    } catch (err) {
+        console.error("Render error:", err);
+    }
+
     closeProjectForm();
     submitBtn.classList.remove("btn-loading");
 }
@@ -726,6 +687,14 @@ function renderReports() {
             }
         }
     });
+
+    if (completed === 0 && pending === 0) {
+        const wrapper = tasksCtx.closest(".report-card");
+        if (wrapper) {
+            wrapper.innerHTML = '<h2>Tasks: Completed vs Pending</h2><p style="color:#6b7280; padding:40px 0; text-align:center;">No tasks yet — add one from the Tasks page.</p>';
+        }
+        return;
+    }
 
     tasksChartInstance = new Chart(tasksCtx, {
         type: "doughnut",
