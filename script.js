@@ -1,3 +1,50 @@
+// ---------- JSONBIN DATABASE ----------
+
+const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a92dba9da38895dfe20038";
+const JSONBIN_KEY = "$2a$10$4DrhIPag0vnTKjFeEzdEoOSsXoQzENjoxkb7yh8eGkMFb.DYaiH5K";
+
+fetch(JSONBIN_URL + "/latest", {
+    headers: { "X-Master-Key": JSONBIN_KEY }
+})
+.then(res => res.json())
+.then(data => {
+    const db = data.record || {};
+
+    Object.keys(db).forEach(key => {
+        localStorage.setItem(key, db[key]);
+    });
+
+    if (typeof renderProjects === "function") renderProjects();
+    if (typeof renderTasks === "function") renderTasks();
+    if (typeof renderNotifications === "function") renderNotifications();
+})
+.catch(err => console.log("Database load error:", err));
+
+const originalSetItem = localStorage.setItem.bind(localStorage);
+
+localStorage.setItem = function(key, value) {
+    originalSetItem(key, value);
+
+    const data = {};
+
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        data[k] = localStorage.getItem(k);
+    }
+
+    fetch(JSONBIN_URL, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": JSONBIN_KEY
+        },
+        body: JSON.stringify(data)
+    });
+};
+
+// ---------- CURRENT USER ----------
+let currentUser = localStorage.getItem("loggedInUser") || "guest";
+
 // ---------- CHART INSTANCES ----------
 let projectsChartInstance = null;
 let tasksChartInstance = null;
@@ -54,7 +101,7 @@ function finishSubmitProject(projectName, manager, deadline, status, submitBtn) 
         });
     }
 
-    localStorage.setItem("projects", JSON.stringify(projects));
+    saveProjects(projects);
 
     renderProjects();
     renderFullProjects();
@@ -81,14 +128,14 @@ function editProject(index) {
 function deleteProject(index) {
     const projects = getProjects();
     projects.splice(index, 1);
-    localStorage.setItem("projects", JSON.stringify(projects));
+    saveProjects(projects);
     renderProjects();
     renderFullProjects();
     renderReports();
     renderNotifications();
 }
 
-// ---------- PROJECT DATA ----------
+// ---------- PROJECT DATA (PER-USER) ----------
 
 function getDefaultProjects() {
     return [
@@ -98,13 +145,34 @@ function getDefaultProjects() {
     ];
 }
 
+function projectsKey() {
+    return "projects_" + currentUser;
+}
+
+function tasksKey() {
+    return "tasks_" + currentUser;
+}
+
 function getProjects() {
-    let projects = JSON.parse(localStorage.getItem("projects"));
+    const key = projectsKey();
+    let projects = JSON.parse(localStorage.getItem(key));
+
     if (!projects) {
+        if (currentUser === "admin" || currentUser === "pryasparashar0@gmail.com") {
+            const legacy = JSON.parse(localStorage.getItem("projects"));
+            if (legacy) {
+                localStorage.setItem(key, JSON.stringify(legacy));
+                return legacy;
+            }
+        }
         projects = getDefaultProjects();
-        localStorage.setItem("projects", JSON.stringify(projects));
+        localStorage.setItem(key, JSON.stringify(projects));
     }
     return projects;
+}
+
+function saveProjects(projects) {
+    localStorage.setItem(projectsKey(), JSON.stringify(projects));
 }
 
 // ---------- AI RISK ENGINE ----------
@@ -455,14 +523,28 @@ function switchView(viewName) {
     }
 }
 
-// ---------- TASKS ----------
+// ---------- TASKS (PER-USER) ----------
 
 function getTasks() {
-    return JSON.parse(localStorage.getItem("tasks")) || [];
+    const key = tasksKey();
+    let tasks = JSON.parse(localStorage.getItem(key));
+
+    if (!tasks) {
+        if (currentUser === "admin" || currentUser === "pryasparashar0@gmail.com") {
+            const legacy = JSON.parse(localStorage.getItem("tasks"));
+            if (legacy) {
+                localStorage.setItem(key, JSON.stringify(legacy));
+                return legacy;
+            }
+        }
+        tasks = [];
+        localStorage.setItem(key, JSON.stringify(tasks));
+    }
+    return tasks;
 }
 
 function saveTasks(tasks) {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    localStorage.setItem(tasksKey(), JSON.stringify(tasks));
 }
 
 function showTaskForm() {
@@ -688,20 +770,26 @@ function renderReports() {
 
 // ---------- LOGIN / LOGOUT ----------
 
+const validUsers = [
+    { user: "admin", pass: "1234" },
+    { user: "pryasparashar0@gmail.com", pass: "pryas@123" },
+    { user: "varunnair1@gmail.com", pass: "23080308" },
+    { user: "sachanashwani2008@gmail.com", pass: "22042010" },
+    { user: "ishanpandeypatna@gmail.com", pass: "123@ishan" },
+    { user: "iskabhavika@gmail.com", pass: "291107" },
+    { user: "devansh_.7927@gmail.com", pass: "07092007" }
+];
+
 function handleLogin() {
     const username = document.getElementById("loginUsername").value;
     const password = document.getElementById("loginPassword").value;
     const errorMsg = document.getElementById("loginError");
 
-    const validUsers = [
-        { user: "admin", pass: "1234" },
-        { user: "pryasparashar0@gmail.com", pass: "pryas@123" }
-    ];
-
     const match = validUsers.find(u => u.user === username && u.pass === password);
 
     if (match) {
         localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("loggedInUser", match.user);
         window.location.href = "index.html";
     } else {
         errorMsg.classList.remove("hidden");
@@ -716,6 +804,7 @@ function checkLogin() {
 
 function logout() {
     localStorage.removeItem("loggedIn");
+    localStorage.removeItem("loggedInUser");
     window.location.href = "login.html";
 }
 
@@ -823,11 +912,22 @@ function uploadProjectPhoto(event) {
         if (!p.photos) p.photos = [];
         p.photos.push(base64Image);
 
-        localStorage.setItem("projects", JSON.stringify(projects));
+        saveProjects(projects);
 
         renderProjectPhotos(p);
     };
     reader.readAsDataURL(file);
+}
+
+function deleteProjectPhoto(photoIndex) {
+    const projects = getProjects();
+    const p = projects[currentProjectIndex];
+
+    if (!p.photos) return;
+    p.photos.splice(photoIndex, 1);
+
+    saveProjects(projects);
+    renderProjectPhotos(p);
 }
 
 function renderProjectPhotos(p) {
@@ -841,8 +941,13 @@ function renderProjectPhotos(p) {
         return;
     }
 
-    photos.forEach(function (photoUrl) {
-        grid.innerHTML += `<img src="${photoUrl}">`;
+    photos.forEach(function (photoUrl, i) {
+        grid.innerHTML += `
+            <div class="photo-item">
+                <img src="${photoUrl}">
+                <button class="photo-delete-btn" onclick="deleteProjectPhoto(${i})" title="Remove photo">✕</button>
+            </div>
+        `;
     });
 }
 
@@ -945,7 +1050,7 @@ function saveEditField() {
     const p = projects[currentProjectIndex];
 
     p[currentEditField] = newValue;
-    localStorage.setItem("projects", JSON.stringify(projects));
+    saveProjects(projects);
 
     const field = currentEditField;
     document.getElementById("pp" + field.charAt(0).toUpperCase() + field.slice(1)).textContent = newValue || "Not added yet";
@@ -956,6 +1061,11 @@ function saveEditField() {
 // ---------- PAGE LOAD ----------
 
 window.addEventListener("DOMContentLoaded", function () {
+    const userLabel = document.getElementById("currentUserLabel");
+    if (userLabel) {
+        userLabel.textContent = currentUser !== "guest" ? "Signed in as " + currentUser : "";
+    }
+
     renderProjects();
     renderTasks();
     renderNotifications();
@@ -970,4 +1080,4 @@ window.addEventListener("DOMContentLoaded", function () {
             }
         }
     });
-});s
+});

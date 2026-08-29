@@ -1004,6 +1004,39 @@ button:active {
     flex-shrink: 0;
 }
 
+.photo-item {
+    position: relative;
+    display: inline-block;
+}
+
+.photo-delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(15, 20, 32, 0.85);
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    color: #f87171;
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.photo-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.photo-delete-btn::before {
+    display: none;
+}
+
 /* EDIT FIELD MODAL */
 
 .edit-field-modal {
@@ -1431,6 +1464,17 @@ button:active {
     padding: 20px 16px;
     color: #6b7280;
     font-size: 13px;
+}
+
+/* CURRENT USER LABEL */
+
+.current-user {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 11px;
+    color: #6b7280;
+    letter-spacing: 0.3px;
 }
 
 /* ---------- MOBILE RESPONSIVENESS ---------- */
