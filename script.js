@@ -59,6 +59,7 @@ function finishSubmitProject(projectName, manager, deadline, status, submitBtn) 
     renderProjects();
     renderFullProjects();
     renderReports();
+    renderNotifications();
     closeProjectForm();
     submitBtn.classList.remove("btn-loading");
 }
@@ -84,6 +85,7 @@ function deleteProject(index) {
     renderProjects();
     renderFullProjects();
     renderReports();
+    renderNotifications();
 }
 
 // ---------- PROJECT DATA ----------
@@ -104,6 +106,165 @@ function getProjects() {
     }
     return projects;
 }
+
+// ---------- AI RISK ENGINE ----------
+
+function getLinkedTaskStats(projectName) {
+    const tasks = getTasks();
+    const linked = tasks.filter(t => t.project && t.project.trim().toLowerCase() === projectName.trim().toLowerCase());
+    const done = linked.filter(t => t.done).length;
+    return { total: linked.length, done: done, pending: linked.length - done };
+}
+
+function computeAIRisk(p) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(p.deadline);
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysRemaining = Math.round((deadline - today) / msPerDay);
+    const progress = p.progress || 0;
+    const taskStats = getLinkedTaskStats(p.name);
+
+    let level, label, score, reason, recommendation;
+
+    const taskNote = taskStats.total > 0
+        ? " " + taskStats.pending + " of " + taskStats.total + " linked task(s) are still pending."
+        : "";
+
+    if (daysRemaining < 0) {
+        level = "critical";
+        label = "Critical";
+        score = 95;
+        reason = "Deadline passed " + Math.abs(daysRemaining) + " day(s) ago with only " + progress + "% completed." + taskNote;
+        recommendation = "Set a new realistic deadline today, notify " + (p.manager || "the project manager") + ", and freeze scope until the backlog is cleared.";
+    } else if (daysRemaining <= 3 && progress < 90) {
+        level = "high";
+        label = "High Risk";
+        score = 80;
+        reason = "Just " + daysRemaining + " day(s) remain and progress is at " + progress + "%." + taskNote;
+        recommendation = "Add extra hands to the remaining " + (100 - progress) + "% of work this week, or negotiate a short extension now rather than at the deadline.";
+    } else if (daysRemaining <= 7 && progress < 70) {
+        level = "medium";
+        label = "Moderate Risk";
+        score = 55;
+        reason = daysRemaining + " day(s) remain with " + progress + "% completed — current pace is behind schedule." + taskNote;
+        recommendation = "Review this week's task list with " + (p.manager || "the manager") + " and confirm blockers are cleared before Friday.";
+    } else if (daysRemaining <= 14 && progress < 40) {
+        level = "medium";
+        label = "Moderate Risk";
+        score = 50;
+        reason = "Progress (" + progress + "%) is trailing for a " + daysRemaining + "-day runway." + taskNote;
+        recommendation = "Break remaining work into weekly milestones so slippage is caught earlier next time.";
+    } else {
+        level = "low";
+        label = "On Track";
+        score = 15;
+        reason = daysRemaining + " day(s) remain with " + progress + "% completed — pace is healthy relative to the deadline." + taskNote;
+        recommendation = "No action needed. Keep logging progress updates weekly to maintain visibility.";
+    }
+
+    return { level: level, label: label, score: score, reason: reason, recommendation: recommendation, daysRemaining: daysRemaining };
+}
+
+function aiRiskBadgeHTML(p) {
+    const risk = computeAIRisk(p);
+    return '<span class="ai-badge ai-badge-' + risk.level + '">AI: ' + risk.label + '</span>';
+}
+
+function renderAIRiskCard(p) {
+    const risk = computeAIRisk(p);
+    const container = document.getElementById("aiRiskCard");
+    if (!container) return;
+
+    const deadlineText = risk.daysRemaining < 0
+        ? Math.abs(risk.daysRemaining) + " day(s) overdue"
+        : risk.daysRemaining + " day(s) remaining";
+
+    container.innerHTML =
+        '<div class="ai-risk-card ai-risk-' + risk.level + '">' +
+            '<div class="ai-risk-top">' +
+                '<span class="ai-badge ai-badge-' + risk.level + '">' + risk.label + '</span>' +
+                '<span class="ai-risk-score">Risk score: ' + risk.score + '/100</span>' +
+            '</div>' +
+            '<div class="ai-score-track">' +
+                '<div class="ai-score-fill ai-score-fill-' + risk.level + '" style="width:' + risk.score + '%;"></div>' +
+            '</div>' +
+            '<p class="ai-risk-meta">' + deadlineText + ' &bull; ' + (p.progress || 0) + '% complete</p>' +
+            '<p class="ai-risk-reason">' + risk.reason + '</p>' +
+            '<p class="ai-risk-recommendation"><strong>Recommendation:</strong> ' + risk.recommendation + '</p>' +
+        '</div>';
+}
+
+// ---------- NOTIFICATION CENTER ----------
+
+function computeNotifications() {
+    const projects = getProjects();
+    const notifications = [];
+
+    projects.forEach(function (p, index) {
+        const risk = computeAIRisk(p);
+        if (risk.level === "critical" || risk.level === "high") {
+            let msg;
+            if (risk.daysRemaining < 0) {
+                msg = "\"" + p.name + "\" is overdue by " + Math.abs(risk.daysRemaining) + " day(s).";
+            } else if (risk.daysRemaining === 0) {
+                msg = "\"" + p.name + "\" is due today.";
+            } else if (risk.daysRemaining === 1) {
+                msg = "\"" + p.name + "\" is due tomorrow — progress is at " + (p.progress || 0) + "%.";
+            } else {
+                msg = "\"" + p.name + "\" has " + risk.daysRemaining + " day(s) left and is at high risk.";
+            }
+            notifications.push({ index: index, level: risk.level, message: msg });
+        }
+    });
+
+    return notifications;
+}
+
+function renderNotifications() {
+    const notifications = computeNotifications();
+    const badge = document.getElementById("notifBadge");
+    const list = document.getElementById("notifList");
+    if (!badge || !list) return;
+
+    if (notifications.length === 0) {
+        badge.classList.add("hidden");
+        list.innerHTML = "<p class='notif-empty'>No urgent alerts right now.</p>";
+        return;
+    }
+
+    badge.textContent = notifications.length;
+    badge.classList.remove("hidden");
+
+    list.innerHTML = "";
+    notifications.forEach(function (n) {
+        list.innerHTML += `
+            <div class="notif-item notif-item-${n.level}" onclick="closeNotifPanel(); openProjectDetail(${n.index});">
+                <span class="notif-dot notif-dot-${n.level}"></span>
+                <span>${n.message}</span>
+            </div>
+        `;
+    });
+}
+
+function toggleNotifPanel() {
+    const panel = document.getElementById("notifPanel");
+    if (panel) panel.classList.toggle("show");
+}
+
+function closeNotifPanel() {
+    const panel = document.getElementById("notifPanel");
+    if (panel) panel.classList.remove("show");
+}
+
+document.addEventListener("click", function (e) {
+    const panel = document.getElementById("notifPanel");
+    const bell = document.getElementById("notifBell");
+    if (!panel || !bell) return;
+    if (panel.classList.contains("show") && !panel.contains(e.target) && !bell.contains(e.target)) {
+        panel.classList.remove("show");
+    }
+});
 
 // ---------- DASHBOARD PROJECT LIST ----------
 
@@ -131,7 +292,7 @@ function renderProjects() {
 
         projectList.innerHTML += `
             <div class="project" onclick="openProjectDetail(${index})">
-                <div>
+                <div class="project-main">
                     <h3>${p.name}</h3>
                     <p>${p.manager} • Due ${p.deadline}</p>
                 </div>
@@ -142,8 +303,11 @@ function renderProjects() {
                     <span>${progress}%</span>
                 </div>
                 <span class="status ${statusClass}">${statusLabel}</span>
-                <button class="task-edit" onclick="editProject(${index}); event.stopPropagation();">Edit</button>
-                <button class="task-delete" onclick="deleteProject(${index}); event.stopPropagation();">Delete</button>
+                ${aiRiskBadgeHTML(p)}
+                <div class="project-actions">
+                    <button class="task-edit" onclick="editProject(${index}); event.stopPropagation();">Edit</button>
+                    <button class="task-delete" onclick="deleteProject(${index}); event.stopPropagation();">Delete</button>
+                </div>
             </div>
         `;
     });
@@ -242,7 +406,7 @@ function renderFullProjects() {
 
         container.innerHTML += `
             <div class="project" onclick="openProjectDetail(${realIndex})">
-                <div>
+                <div class="project-main">
                     <h3>${p.name}</h3>
                     <p>${p.manager} • Due ${p.deadline}</p>
                 </div>
@@ -253,8 +417,11 @@ function renderFullProjects() {
                     <span>${progress}%</span>
                 </div>
                 <span class="status ${statusClass}">${statusLabel}</span>
-                <button class="task-edit" onclick="editProject(${realIndex}); event.stopPropagation();">Edit</button>
-                <button class="task-delete" onclick="deleteProject(${realIndex}); event.stopPropagation();">Delete</button>
+                ${aiRiskBadgeHTML(p)}
+                <div class="project-actions">
+                    <button class="task-edit" onclick="editProject(${realIndex}); event.stopPropagation();">Edit</button>
+                    <button class="task-delete" onclick="deleteProject(${realIndex}); event.stopPropagation();">Delete</button>
+                </div>
             </div>
         `;
     });
@@ -637,6 +804,7 @@ function openProjectDetail(index) {
     document.getElementById("ppWork").textContent = p.work || "Not added yet";
     document.getElementById("ppIdea").textContent = p.idea || "Not added yet";
 
+    renderAIRiskCard(p);
     renderProjectPhotos(p);
     switchView('projectPage');
 }
@@ -686,13 +854,15 @@ function openHologram() {
     const photos = p.photos || [];
 
     if (photos.length === 0) {
-        alert("Upload a photo first to view it in Hologram mode!");
+        alert("Upload a photo first to view it in Hologram mode.");
         return;
     }
 
     const latestPhoto = photos[photos.length - 1];
     document.getElementById("hologramImg").src = latestPhoto;
-    document.getElementById("hologramLabel").textContent = p.name.toUpperCase() + " — LIVE SCAN";
+    document.getElementById("hologramLabel").textContent = p.name.toUpperCase() + " — STRUCTURAL SCAN";
+    document.getElementById("hologramReadout").innerHTML =
+        "PROGRESS: " + (p.progress || 0) + "%<br>STATUS: " + (p.status || "unknown").toUpperCase();
     document.getElementById("hologramModal").classList.remove("hidden");
 }
 
@@ -748,7 +918,6 @@ function checkProjectFromURL() {
 
 let currentEditField = null;
 
-const fieldIcons = { budget: "💰", work: "🛠️", idea: "💡" };
 const fieldLabels = { budget: "Budget", work: "Work Involved", idea: "Idea / Notes" };
 
 function editProjectField(field) {
@@ -756,7 +925,6 @@ function editProjectField(field) {
     const projects = getProjects();
     const p = projects[currentProjectIndex];
 
-    document.getElementById("editFieldIcon").textContent = fieldIcons[field];
     document.getElementById("editFieldTitle").textContent = "Edit " + fieldLabels[field];
     document.getElementById("editFieldTextarea").value = p[field] || "";
 
@@ -790,6 +958,7 @@ function saveEditField() {
 window.addEventListener("DOMContentLoaded", function () {
     renderProjects();
     renderTasks();
+    renderNotifications();
     checkProjectFromURL();
 
     Object.keys(teamData).forEach(function (personId) {
@@ -801,4 +970,4 @@ window.addEventListener("DOMContentLoaded", function () {
             }
         }
     });
-});
+});s
