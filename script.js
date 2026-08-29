@@ -1,6 +1,6 @@
 // ---------- JSONBIN DATABASE ----------
 
-const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a92dba9da38895dfe20038";
+const JSONBIN_URL = "https://api.jsonbin.io/v3/b/6a92dba9da38895dfe200038";
 const JSONBIN_KEY = "$2a$10$4DrhIPag0vnTKjFeEzdEoOSsXoQzENjoxkb7yh8eGkMFb.DYaiH5K";
 
 fetch(JSONBIN_URL + "/latest", {
