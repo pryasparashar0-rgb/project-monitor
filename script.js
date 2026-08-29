@@ -393,6 +393,7 @@ function renderProjects() {
 
 function animateCount(elementId, targetValue) {
     const el = document.getElementById(elementId);
+    if (!el) return;
     const startValue = parseInt(el.textContent) || 0;
 
     if (startValue === targetValue) return;
@@ -688,6 +689,13 @@ function renderTasks() {
 }
 
 // ---------- REPORTS ----------
+// FIX: previously, when there were zero tasks, this function replaced the
+// #tasksChart <canvas> element's parent innerHTML with a plain message.
+// That permanently deleted the canvas from the DOM, so even after tasks were
+// added later, document.getElementById("tasksChart") would return null and
+// this whole function would bail out early forever (until a full page
+// reload). Now we keep the canvas in the DOM at all times and just toggle
+// a sibling "empty state" div to show/hide instead.
 
 function renderReports() {
     const projects = getProjects();
@@ -702,112 +710,147 @@ function renderReports() {
 
     const projectsCtx = document.getElementById("projectsChart");
     const tasksCtx = document.getElementById("tasksChart");
+    const projectsEmpty = document.getElementById("projectsChartEmpty");
+    const tasksEmpty = document.getElementById("tasksChartEmpty");
     if (!projectsCtx || !tasksCtx) return;
 
     if (typeof Chart === "undefined") {
-        console.error("Chart.js did not load (check your internet connection or Brave Shields blocking cdn.jsdelivr.net) — skipping chart rendering.");
+        console.error("Chart.js did not load (check your internet connection, or an extension like Brave Shields / an ad-blocker blocking cdn.jsdelivr.net) — skipping chart rendering.");
         return;
     }
-
-    if (projectsChartInstance) projectsChartInstance.destroy();
-    if (tasksChartInstance) tasksChartInstance.destroy();
 
     Chart.defaults.color = "#9ca3af";
     Chart.defaults.font.family = "'Poppins', sans-serif";
 
-    projectsChartInstance = new Chart(projectsCtx, {
-        type: "bar",
-        data: {
-            labels: ["On Track", "Delayed", "At Risk"],
-            datasets: [{
-                label: "Projects",
-                data: [onTrack, delayed, atRisk],
-                backgroundColor: [
-                    "rgba(74, 222, 128, 0.7)",
-                    "rgba(248, 113, 113, 0.7)",
-                    "rgba(251, 191, 36, 0.7)"
-                ],
-                borderColor: ["#4ade80", "#f87171", "#fbbf24"],
-                borderWidth: 1.5,
-                borderRadius: 8,
-                barThickness: 50
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: "rgba(20, 26, 41, 0.95)",
-                    borderColor: "rgba(96, 165, 250, 0.3)",
-                    borderWidth: 1,
-                    padding: 12,
-                    titleFont: { size: 13, weight: "600" },
-                    bodyFont: { size: 13 },
-                    cornerRadius: 8
-                }
+    // --- Projects by Status ---
+    try {
+        if (projectsChartInstance) {
+            projectsChartInstance.destroy();
+            projectsChartInstance = null;
+        }
+
+        projectsCtx.classList.remove("hidden");
+        if (projectsEmpty) projectsEmpty.classList.add("hidden");
+
+        projectsChartInstance = new Chart(projectsCtx, {
+            type: "bar",
+            data: {
+                labels: ["On Track", "Delayed", "At Risk"],
+                datasets: [{
+                    label: "Projects",
+                    data: [onTrack, delayed, atRisk],
+                    backgroundColor: [
+                        "rgba(74, 222, 128, 0.7)",
+                        "rgba(248, 113, 113, 0.7)",
+                        "rgba(251, 191, 36, 0.7)"
+                    ],
+                    borderColor: ["#4ade80", "#f87171", "#fbbf24"],
+                    borderWidth: 1.5,
+                    borderRadius: 8,
+                    barThickness: 50
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1, color: "#9ca3af" },
-                    grid: { color: "rgba(255,255,255,0.06)" }
-                },
-                x: {
-                    ticks: { color: "#9ca3af" },
-                    grid: { display: false }
-                }
-            }
-        }
-    });
-
-    if (completed === 0 && pending === 0) {
-        const wrapper = tasksCtx.closest(".report-card");
-        if (wrapper) {
-            wrapper.innerHTML = '<h2>Tasks: Completed vs Pending</h2><p style="color:#6b7280; padding:40px 0; text-align:center;">No tasks yet — add one from the Tasks page.</p>';
-        }
-        return;
-    }
-
-    tasksChartInstance = new Chart(tasksCtx, {
-        type: "doughnut",
-        data: {
-            labels: ["Completed", "Pending"],
-            datasets: [{
-                data: [completed, pending],
-                backgroundColor: [
-                    "rgba(124, 58, 237, 0.8)",
-                    "rgba(255, 255, 255, 0.08)"
-                ],
-                borderColor: ["#7c3aed", "rgba(255,255,255,0.15)"],
-                borderWidth: 2,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            cutout: "70%",
-            plugins: {
-                legend: {
-                    position: "bottom",
-                    labels: {
-                        color: "#9ca3af",
-                        padding: 20,
-                        font: { size: 13 },
-                        usePointStyle: true,
-                        pointStyle: "circle"
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: "rgba(20, 26, 41, 0.95)",
+                        borderColor: "rgba(96, 165, 250, 0.3)",
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { size: 13, weight: "600" },
+                        bodyFont: { size: 13 },
+                        cornerRadius: 8
                     }
                 },
-                tooltip: {
-                    backgroundColor: "rgba(20, 26, 41, 0.95)",
-                    borderColor: "rgba(96, 165, 250, 0.3)",
-                    borderWidth: 1,
-                    padding: 12,
-                    cornerRadius: 8
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, color: "#9ca3af" },
+                        grid: { color: "rgba(255,255,255,0.06)" }
+                    },
+                    x: {
+                        ticks: { color: "#9ca3af" },
+                        grid: { display: false }
+                    }
                 }
             }
+        });
+    } catch (err) {
+        console.error("Error rendering the Projects by Status chart:", err);
+        projectsCtx.classList.add("hidden");
+        if (projectsEmpty) {
+            projectsEmpty.textContent = "Couldn't render this chart — check the browser console for details.";
+            projectsEmpty.classList.remove("hidden");
         }
-    });
+    }
+
+    // --- Tasks: Completed vs Pending ---
+    try {
+        if (tasksChartInstance) {
+            tasksChartInstance.destroy();
+            tasksChartInstance = null;
+        }
+
+        if (completed === 0 && pending === 0) {
+            tasksCtx.classList.add("hidden");
+            if (tasksEmpty) tasksEmpty.classList.remove("hidden");
+            return;
+        }
+
+        tasksCtx.classList.remove("hidden");
+        if (tasksEmpty) tasksEmpty.classList.add("hidden");
+
+        tasksChartInstance = new Chart(tasksCtx, {
+            type: "doughnut",
+            data: {
+                labels: ["Completed", "Pending"],
+                datasets: [{
+                    data: [completed, pending],
+                    backgroundColor: [
+                        "rgba(124, 58, 237, 0.8)",
+                        "rgba(255, 255, 255, 0.08)"
+                    ],
+                    borderColor: ["#7c3aed", "rgba(255,255,255,0.15)"],
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "70%",
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            color: "#9ca3af",
+                            padding: 20,
+                            font: { size: 13 },
+                            usePointStyle: true,
+                            pointStyle: "circle"
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: "rgba(20, 26, 41, 0.95)",
+                        borderColor: "rgba(96, 165, 250, 0.3)",
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Error rendering the Tasks chart:", err);
+        tasksCtx.classList.add("hidden");
+        if (tasksEmpty) {
+            tasksEmpty.textContent = "Couldn't render this chart — check the browser console for details.";
+            tasksEmpty.classList.remove("hidden");
+        }
+    }
 }
 
 // ---------- LOGIN / LOGOUT ----------
@@ -1207,10 +1250,36 @@ function computeCostDrivers(p) {
 }
 
 // ---------- INSIGHTS / BENCHMARKING DASHBOARD ----------
+// FIX: this whole function now (1) never lets one bad/incomplete project
+// throw and kill the rest of the render, and (2) shows a proper empty-state
+// message instead of a blank canvas when the "highest risk" project simply
+// doesn't have enough data yet (no start date / budget / linked tasks) to
+// compute meaningful cost-escalation drivers — which is what was happening
+// on the Insights page.
 
 function renderInsights() {
     const projects = getProjects();
-    if (projects.length === 0) return;
+
+    const benchCtx = document.getElementById("benchmarkChart");
+    const driverCtx = document.getElementById("driverChart");
+    const benchEmpty = document.getElementById("benchmarkChartEmpty");
+    const driverEmpty = document.getElementById("driverChartEmpty");
+
+    if (projects.length === 0) {
+        animateCount("portfolioRiskScore", 0);
+        animateCount("costOverrunCount", 0);
+        animateCount("timeOverrunCount", 0);
+        animateCount("criticalAlertCount", 0);
+
+        if (benchCtx) benchCtx.classList.add("hidden");
+        if (benchEmpty) { benchEmpty.textContent = "Add a project to see this chart."; benchEmpty.classList.remove("hidden"); }
+        if (driverCtx) driverCtx.classList.add("hidden");
+        if (driverEmpty) { driverEmpty.textContent = "Add a project to see this chart."; driverEmpty.classList.remove("hidden"); }
+
+        const alertListEmpty = document.getElementById("insightsAlertList");
+        if (alertListEmpty) alertListEmpty.innerHTML = "<p style='padding:20px;color:#6b7280;'>No predictive alerts right now.</p>";
+        return;
+    }
 
     let totalScore = 0;
     let costOverrunCount = 0;
@@ -1224,72 +1293,139 @@ function renderInsights() {
     let worstScore = -1;
 
     projects.forEach(function (p) {
-        const risk = computeAIRisk(p);
-        totalScore += risk.score;
-        if (risk.level === "critical") criticalCount++;
+        try {
+            const risk = computeAIRisk(p);
+            totalScore += risk.score;
+            if (risk.level === "critical") criticalCount++;
 
-        const cost = computeCostOverrun(p);
-        if (cost.hasData && cost.overrunPercent > 0) costOverrunCount++;
+            const cost = computeCostOverrun(p);
+            if (cost.hasData && cost.overrunPercent > 0) costOverrunCount++;
 
-        const time = computeTimeOverrun(p);
-        if (time.hasData && time.overrunDays > 0) timeOverrunCount++;
+            const time = computeTimeOverrun(p);
+            if (time.hasData && time.overrunDays > 0) timeOverrunCount++;
 
-        labels.push(p.name.length > 15 ? p.name.slice(0, 15) + "…" : p.name);
-        progressData.push(p.progress || 0);
-        const estimated = parseFloat(p.budgetEst) || 0;
-        const spent = parseFloat(p.budgetSpent) || 0;
-        spentPercentData.push(estimated > 0 ? Math.round((spent / estimated) * 100) : 0);
+            labels.push(p.name.length > 15 ? p.name.slice(0, 15) + "…" : p.name);
+            progressData.push(p.progress || 0);
+            const estimated = parseFloat(p.budgetEst) || 0;
+            const spent = parseFloat(p.budgetSpent) || 0;
+            spentPercentData.push(estimated > 0 ? Math.round((spent / estimated) * 100) : 0);
 
-        let combinedScore = risk.score;
-        if (cost.hasData) combinedScore = (risk.score + Math.min(100, Math.max(0, cost.overrunPercent * 2))) / 2;
-        if (combinedScore > worstScore) { worstScore = combinedScore; worstProject = p; }
+            let combinedScore = risk.score;
+            if (cost.hasData) combinedScore = (risk.score + Math.min(100, Math.max(0, cost.overrunPercent * 2))) / 2;
+            if (combinedScore > worstScore) { worstScore = combinedScore; worstProject = p; }
+        } catch (err) {
+            console.error("Skipping a project in Insights due to an error (check its data):", p && p.name, err);
+        }
     });
 
-    animateCount("portfolioRiskScore", Math.round(totalScore / projects.length));
+    animateCount("portfolioRiskScore", projects.length ? Math.round(totalScore / projects.length) : 0);
     animateCount("costOverrunCount", costOverrunCount);
     animateCount("timeOverrunCount", timeOverrunCount);
     animateCount("criticalAlertCount", criticalCount);
 
-    const benchCtx = document.getElementById("benchmarkChart");
-    if (benchCtx) {
-        if (benchmarkChartInstance) benchmarkChartInstance.destroy();
-        benchmarkChartInstance = new Chart(benchCtx, {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: "Progress %", data: progressData, backgroundColor: "rgba(96,165,250,0.7)", borderRadius: 6 },
-                    { label: "Budget Spent %", data: spentPercentData, backgroundColor: "rgba(248,113,113,0.7)", borderRadius: 6 }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { labels: { color: "#9ca3af" } } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { color: "#9ca3af" }, grid: { color: "rgba(255,255,255,0.06)" } },
-                    x: { ticks: { color: "#9ca3af" }, grid: { display: false } }
-                }
-            }
-        });
+    if (typeof Chart === "undefined") {
+        console.error("Chart.js did not load — skipping Insights charts.");
+        return;
     }
 
-    const driverCtx = document.getElementById("driverChart");
-    if (driverCtx && worstProject) {
-        const drivers = computeCostDrivers(worstProject);
-        if (driverChartInstance) driverChartInstance.destroy();
-        driverChartInstance = new Chart(driverCtx, {
-            type: "doughnut",
-            data: {
-                labels: ["Schedule Slip", "Resource / Task Backlog", "Spend Rate"],
-                datasets: [{
-                    data: [drivers.schedule, drivers.resource, drivers.spendRate],
-                    backgroundColor: ["rgba(248,113,113,0.8)", "rgba(251,191,36,0.8)", "rgba(124,58,237,0.8)"],
-                    borderColor: ["#f87171", "#fbbf24", "#7c3aed"],
-                    borderWidth: 2
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { position: "bottom", labels: { color: "#9ca3af" } } } }
-        });
+    Chart.defaults.color = "#9ca3af";
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+
+    // --- Benchmarking: Progress vs Budget Spent ---
+    if (benchCtx) {
+        try {
+            if (benchmarkChartInstance) {
+                benchmarkChartInstance.destroy();
+                benchmarkChartInstance = null;
+            }
+
+            benchCtx.classList.remove("hidden");
+            if (benchEmpty) benchEmpty.classList.add("hidden");
+
+            benchmarkChartInstance = new Chart(benchCtx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: "Progress %", data: progressData, backgroundColor: "rgba(96,165,250,0.7)", borderRadius: 6 },
+                        { label: "Budget Spent %", data: spentPercentData, backgroundColor: "rgba(248,113,113,0.7)", borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: "#9ca3af" } } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: "#9ca3af" }, grid: { color: "rgba(255,255,255,0.06)" } },
+                        x: { ticks: { color: "#9ca3af" }, grid: { display: false } }
+                    }
+                }
+            });
+        } catch (err) {
+            console.error("Error rendering the Benchmarking chart:", err);
+            benchCtx.classList.add("hidden");
+            if (benchEmpty) {
+                benchEmpty.textContent = "Couldn't render this chart — check the browser console for details.";
+                benchEmpty.classList.remove("hidden");
+            }
+        }
+    }
+
+    // --- Cost Escalation Drivers (Highest-Risk Project) ---
+    if (driverCtx) {
+        try {
+            if (driverChartInstance) {
+                driverChartInstance.destroy();
+                driverChartInstance = null;
+            }
+
+            if (!worstProject) {
+                driverCtx.classList.add("hidden");
+                if (driverEmpty) {
+                    driverEmpty.textContent = "Not enough data yet to identify risk drivers.";
+                    driverEmpty.classList.remove("hidden");
+                }
+            } else {
+                const drivers = computeCostDrivers(worstProject);
+                const hasDriverData = (drivers.schedule + drivers.resource + drivers.spendRate) > 0;
+
+                if (!hasDriverData) {
+                    driverCtx.classList.add("hidden");
+                    if (driverEmpty) {
+                        driverEmpty.textContent = 'Add a Start Date, Estimated Budget, Actual Cost, and linked tasks to "' + worstProject.name + '" to see its risk drivers here.';
+                        driverEmpty.classList.remove("hidden");
+                    }
+                } else {
+                    driverCtx.classList.remove("hidden");
+                    if (driverEmpty) driverEmpty.classList.add("hidden");
+
+                    driverChartInstance = new Chart(driverCtx, {
+                        type: "doughnut",
+                        data: {
+                            labels: ["Schedule Slip", "Resource / Task Backlog", "Spend Rate"],
+                            datasets: [{
+                                data: [drivers.schedule, drivers.resource, drivers.spendRate],
+                                backgroundColor: ["rgba(248,113,113,0.8)", "rgba(251,191,36,0.8)", "rgba(124,58,237,0.8)"],
+                                borderColor: ["#f87171", "#fbbf24", "#7c3aed"],
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: "bottom", labels: { color: "#9ca3af" } } }
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Error rendering the Cost Escalation Drivers chart:", err);
+            driverCtx.classList.add("hidden");
+            if (driverEmpty) {
+                driverEmpty.textContent = "Couldn't render this chart — check the browser console for details.";
+                driverEmpty.classList.remove("hidden");
+            }
+        }
     }
 
     const alertList = document.getElementById("insightsAlertList");

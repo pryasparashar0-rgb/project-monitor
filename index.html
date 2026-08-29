@@ -227,11 +227,17 @@
             <div class="report-grid">
                 <div class="report-card">
                     <h2>Projects by Status</h2>
-                    <canvas id="projectsChart"></canvas>
+                    <div class="chart-wrap">
+                        <canvas id="projectsChart"></canvas>
+                        <div id="projectsChartEmpty" class="chart-empty hidden">No projects yet — add one to see this chart.</div>
+                    </div>
                 </div>
                 <div class="report-card">
                     <h2>Tasks: Completed vs Pending</h2>
-                    <canvas id="tasksChart"></canvas>
+                    <div class="chart-wrap">
+                        <canvas id="tasksChart"></canvas>
+                        <div id="tasksChartEmpty" class="chart-empty hidden">No tasks yet — add one from the Tasks page.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -266,11 +272,17 @@
             <div class="report-grid" style="margin-top:20px;">
                 <div class="report-card">
                     <h2>Benchmarking: Progress vs Budget Spent</h2>
-                    <canvas id="benchmarkChart"></canvas>
+                    <div class="chart-wrap">
+                        <canvas id="benchmarkChart"></canvas>
+                        <div id="benchmarkChartEmpty" class="chart-empty hidden">Add projects with progress and budget data to see this chart.</div>
+                    </div>
                 </div>
                 <div class="report-card">
                     <h2>Cost Escalation Drivers (Highest-Risk Project)</h2>
-                    <canvas id="driverChart"></canvas>
+                    <div class="chart-wrap">
+                        <canvas id="driverChart"></canvas>
+                        <div id="driverChartEmpty" class="chart-empty hidden">Add a Start Date, Estimated Budget, Actual Cost, and linked tasks to a project to see its risk drivers here.</div>
+                    </div>
                 </div>
             </div>
 
